@@ -33,6 +33,6 @@ for /f "tokens=*" %%K in ('reg query "%rootkey%"') do (
         reg delete "%%K" /v StateFlags0000 /f
     )
 )
-powershell -Command "Get-EventLog -LogName * | ForEach-Object { Clear-EventLog -LogName $_ }"
+powershell -Command "Get-EventLog -List | ForEach-Object { Clear-EventLog $_.Log }"
 REM Sysprep/Generalize
 c:\windows\system32\sysprep\sysprep.exe /quiet /generalize /oobe

@@ -13,6 +13,7 @@ try {
         "Microsoft.MixedReality.Portal",
         "Microsoft.People",
         "Microsoft.PowerAutomateDesktop",
+        "Microsoft.Todos",
         "Microsoft.WindowsAlarms",
         "microsoft.windowscommunicationsapps",
         "Microsoft.WindowsFeedbackHub",
@@ -49,7 +50,8 @@ function Set-RegistrySetting {
         $RegValueData
     )
     if (-not (Test-Path -Path $RegPath)) {
-        New-Item -Path Registry::$RegPath.Replace(":", "")
+        $RegPathModified = $RegPath.Replace(":", "")
+        New-Item -Path Registry::$RegPathModified
     }
     New-ItemProperty -Path $RegPath -Name $RegValueName -PropertyType $RegValueType -Value $RegValueData
 }
