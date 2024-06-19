@@ -9,6 +9,7 @@ REM Install Edge Stable
 REM Add additional apps below here
 REM Contoso App (Example)
 REM msiexec /i d:\Contoso\setup.msi /qn /norestart
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\CustomizeImage.ps1
 REM The below lines will remove the unattend.xml that gets the machine into audit mode. If not removed, the OS will get stuck booting to audit mode each time.
 REM Also kills the sysprep process in order to automate sysprep generalize
 del c:\windows\panther\unattend\unattend.xml /F /Q
@@ -32,5 +33,6 @@ for /f "tokens=*" %%K in ('reg query "%rootkey%"') do (
         reg delete "%%K" /v StateFlags0000 /f
     )
 )
+powershell -Command "Get-EventLog -LogName * | ForEach-Object { Clear-EventLog -LogName $_ }"
 REM Sysprep/Generalize
 c:\windows\system32\sysprep\sysprep.exe /quiet /generalize /oobe
