@@ -1657,6 +1657,40 @@ function Get-Office {
         Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $content
     }
 }
+
+function Get-Apps {
+    $apps = @(
+        "7zip.7zip",
+        "CrystalDewWorld.CrystalDiskInfo",
+        "voidtools.Everything",
+        "Google.Chrome",
+        "Mozilla.Firefox",
+        "CrystalRich.LockHunter",
+        "RevoUninstaller.RevoUninstaller",
+        "VideoLAN.VLC",
+        "Zoom.Zoom"
+    )
+    $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
+    $lineNumber = 12
+    foreach ($app in $apps) {
+        $cmdContent = Get-Content -Path $cmdFile
+        $appName = ($app -split '\.')[1]
+        New-Item -Path $AppsPath -Name $appName -ItemType "Directory" -Force
+        $appFolder = Join-Path -Path $AppsPath -ChildPath $appName
+        Invoke-Process -FilePath winget.exe -ArgumentList "download --id $app -d $AppsPath\$appName --scope machine"
+        $installer = Get-ChildItem -Path $appFolder -Include *.exe, *.msi -File
+        $yamlFile = Get-ChildItem -Path $appFolder -Include *.yaml -File
+        $yamlContent = Get-Content -Path $yamlFile -Raw
+        $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
+        $silentInstallCommand = "D:\$appFolder\$installer $silentInstallSwitch"
+        # Insert the new content at the specified line (arrays are 0-indexed, so subtract 1 from the line number)
+        $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
+        # Write the modified content back to the file
+        Set-Content -Path $cmdFile -Value $cmdContent
+        $lineNumber++
+    }
+}
+
 function Get-KBLink {
     param(
         [Parameter(Mandatory)]
