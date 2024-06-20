@@ -1659,35 +1659,45 @@ function Get-Office {
 }
 
 function Get-Apps {
+    param (
+        [string]$WindowsArch
+    )
     $apps = @(
-        "7zip.7zip",
-        "CrystalDewWorld.CrystalDiskInfo",
-        "voidtools.Everything",
-        "Google.Chrome",
-        "Mozilla.Firefox",
-        "CrystalRich.LockHunter",
-        "RevoUninstaller.RevoUninstaller",
-        "VideoLAN.VLC",
-        "Zoom.Zoom"
+        "7-Zip",
+        "CrystalDiskInfo",
+        "Everything",
+        "Google Chrome",
+        "Mozilla Firefox",
+        "LockHunter",
+        "Revo Uninstaller",
+        "VLC Media Player",
+        "Zoom Workplace"
     )
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
     $lineNumber = 12
     foreach ($app in $apps) {
-        $cmdContent = Get-Content -Path $cmdFile
-        $appName = ($app -split '\.')[1]
-        New-Item -Path $AppsPath -Name $appName -ItemType "Directory" -Force
-        $appFolder = Join-Path -Path $AppsPath -ChildPath $appName
-        Invoke-Process -FilePath winget.exe -ArgumentList "download --id $app -d $AppsPath\$appName --scope machine"
-        $installer = Get-ChildItem -Path $appFolder -Include *.exe, *.msi -File
-        $yamlFile = Get-ChildItem -Path $appFolder -Include *.yaml -File
-        $yamlContent = Get-Content -Path $yamlFile -Raw
-        $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
-        $silentInstallCommand = "D:\$appFolder\$installer $silentInstallSwitch"
-        # Insert the new content at the specified line (arrays are 0-indexed, so subtract 1 from the line number)
-        $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
-        # Write the modified content back to the file
-        Set-Content -Path $cmdFile -Value $cmdContent
-        $lineNumber++
+        $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name $app --exact --source winget"
+        if ($wingetSearchResult -ne "No package found matching input criteria.") {
+            $cmdContent = Get-Content -Path $cmdFile
+            New-Item -Path $AppsPath -Name $app -ItemType "Directory" -Force
+            $appFolder = Join-Path -Path $AppsPath -ChildPath $app
+            Invoke-Process -FilePath winget.exe -ArgumentList "download --id $app --download-directory $AppsPath\$app --scope machine --architecture $WindowsArch --accept-package-agreements --accept-source-agreements"
+            $installer = Get-ChildItem -Path "$appFolder\*" -Include *.exe, *.msi -File
+            $yamlFile = Get-ChildItem -Path "$appFolder\*" -Include *.yaml -File
+            $yamlContent = Get-Content -Path $yamlFile -Raw
+            $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
+            if ([System.IO.Path]::GetExtension($installer) -eq ".exe") {
+                $silentInstallCommand = "D:\$appFolder\$installer $silentInstallSwitch"
+            } else {
+                $silentInstallCommand = "msiexec /i D:\$appFolder\$installer /qn /norestart"
+            }
+            # Insert the new content at the specified line
+            $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
+            Set-Content -Path $cmdFile -Value $cmdContent
+            $lineNumber++
+        } else {
+            WriteLog "$wingetSearchResult for the application $app"
+        }
     }
 }
 
@@ -2976,6 +2986,7 @@ if ($InstallApps) {
             exit
         }
         WriteLog "$AppsPath\InstallAppsandSysprep.cmd found"
+        Get-Apps
         
         if (-not $InstallOffice) {
             #Modify InstallAppsandSysprep.cmd to REM out the office install command
