@@ -1670,29 +1670,31 @@ function Get-Apps {
         "Mozilla Firefox",
         "LockHunter",
         "Revo Uninstaller",
-        "VLC Media Player",
+        "VLC media player",
         "Zoom Workplace"
     )
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
     $lineNumber = 12
     foreach ($app in $apps) {
-        $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name $app --exact --source winget"
+        $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name ""$app"" --exact --source winget"
         if ($wingetSearchResult -ne "No package found matching input criteria.") {
             $cmdContent = Get-Content -Path $cmdFile
             New-Item -Path $AppsPath -Name $app -ItemType "Directory" -Force
-            $appFolder = Join-Path -Path $AppsPath -ChildPath $app
-            Invoke-Process -FilePath winget.exe -ArgumentList "download --id $app --download-directory $AppsPath\$app --scope machine --architecture $WindowsArch --accept-package-agreements --accept-source-agreements"
-            $installer = Get-ChildItem -Path "$appFolder\*" -Include *.exe, *.msi -File
-            $yamlFile = Get-ChildItem -Path "$appFolder\*" -Include *.yaml -File
+            $appFolderPath = Join-Path -Path $AppsPath -ChildPath $app
+            $appFolder = Split-Path $appFolderPath -Leaf
+            Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$app"" --exact --download-directory ""$AppsPath\$app"" --scope machine --source winget"
+            $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
+            $installer = Split-Path $installerPath -Leaf
+            $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
             $yamlContent = Get-Content -Path $yamlFile -Raw
             $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
             if ([System.IO.Path]::GetExtension($installer) -eq ".exe") {
-                $silentInstallCommand = "D:\$appFolder\$installer $silentInstallSwitch"
+                $silentInstallCommand = "`"D:\$appFolder\$installer`" $silentInstallSwitch"
             } else {
-                $silentInstallCommand = "msiexec /i D:\$appFolder\$installer /qn /norestart"
+                $silentInstallCommand = "msiexec /i `"D:\$appFolder\$installer`" $silentInstallSwitch"
             }
-            # Insert the new content at the specified line
-            $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
+            # Insert the new content at the specified line number
+            $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
             Set-Content -Path $cmdFile -Value $cmdContent
             $lineNumber++
         } else {
