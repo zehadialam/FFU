@@ -87,3 +87,30 @@ if (-not (Test-Path $themesFolder -PathType Container)) {
     New-Item -Path $themesFolder -ItemType Directory
     Copy-Item -Path "D:\Customizations\oem.theme" -Destination $themesFolder -Force
 }
+
+$publicDesktopPath = [Environment]::GetFolderPath("CommonDesktopDirectory")
+Get-ChildItem -Path $publicDesktopPath -File | Remove-Item -Force
+
+$publicDesktopApps = @(
+    "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
+    "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Firefox.lnk",
+    "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk",
+    "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Zoom\Zoom Workplace.lnk"
+    #"$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Cisco\Cisco AnyConnect Secure Mobility Client\Cisco AnyConnect Secure Mobility Client.lnk"
+)
+
+foreach ($desktopApp in $publicDesktopApps) {
+    Copy-Item -Path $desktopApp -Destination $publicDesktopPath
+}
+
+Copy-Item -Path "D:\Customations\ITSupport.ico" -Destination "$env:windir\System32" -Force
+
+$shortcutContent = @"
+[InternetShortcut]
+URL="https://uga.teamdynamix.com/TDClient/2060/Portal/Requests/ServiceCatalog?CategoryID=3478"
+IconFile="$env:windir\System32\ITsupport.ico"
+IconIndex=0
+"@
+
+$requestITSupportPath = Join-Path -Path $publicDesktopPath -ChildPath "Request IT Support.url"
+Set-Content -Path $requestITSupportPath -Value $shortcutContent

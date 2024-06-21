@@ -1673,6 +1673,10 @@ function Get-Apps {
         "VLC media player",
         "Zoom Workplace"
     )
+    $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $wingetInstalled) {
+        
+    }
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
     $lineNumber = 12
     foreach ($app in $apps) {
