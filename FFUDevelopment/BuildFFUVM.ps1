@@ -1658,24 +1658,29 @@ function Get-Office {
     }
 }
 
+function Install-WinGet {
+    WriteLog "Downloading WinGet and its dependencies..."
+    Start-BitsTransferWithRetry -Source https://aka.ms/getwinget -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Start-BitsTransferWithRetry -Source https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -Destination "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Start-BitsTransferWithRetry -Source https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx -Destination "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
+    WriteLog "Installing WinGet and its dependencies..."
+    Add-AppxPackage -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Add-AppxPackage -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
+    Add-AppxPackage -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    WriteLog "Removing WinGet installer and dependencies..."
+    Remove-Item -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx" -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx" -Force -ErrorAction SilentlyContinue
+}
+
 function Get-Apps {
     param (
-        [string]$WindowsArch
+        [string]$AppsList
     )
-    $apps = @(
-        "7-Zip",
-        "CrystalDiskInfo",
-        "Everything",
-        "Google Chrome",
-        "Mozilla Firefox",
-        "LockHunter",
-        "Revo Uninstaller",
-        "VLC media player",
-        "Zoom Workplace"
-    )
+    $apps = Get-Content -Path $AppsList
     $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $wingetInstalled) {
-        
+        Install-WinGet
     }
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
     $lineNumber = 12
@@ -1683,11 +1688,11 @@ function Get-Apps {
         $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name ""$app"" --exact --source winget"
         if ($wingetSearchResult -ne "No package found matching input criteria.") {
             $cmdContent = Get-Content -Path $cmdFile
-            New-Item -Path $AppsPath -Name $app -ItemType "Directory" -Force
+            New-Item -Path $AppsPath -Name $app -ItemType Directory -Force
             $appFolderPath = Join-Path -Path $AppsPath -ChildPath $app
             $appFolder = Split-Path $appFolderPath -Leaf
             Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$app"" --exact --download-directory ""$AppsPath\$app"" --scope machine --source winget"
-            $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
+            $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File # check if more than one
             $installer = Split-Path $installerPath -Leaf
             $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
             $yamlContent = Get-Content -Path $yamlFile -Raw
@@ -2992,7 +2997,7 @@ if ($InstallApps) {
             exit
         }
         WriteLog "$AppsPath\InstallAppsandSysprep.cmd found"
-        Get-Apps
+        Get-Apps -AppsList "$FFUDevelopmentPath\Apps\appslist.txt"
         
         if (-not $InstallOffice) {
             #Modify InstallAppsandSysprep.cmd to REM out the office install command

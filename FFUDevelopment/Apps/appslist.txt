@@ -1,0 +1,9 @@
+7-Zip
+CrystalDiskInfo
+Everything
+Google Chrome
+Mozilla Firefox
+LockHunter
+Revo Uninstaller
+VLC media player
+Zoom Workplace

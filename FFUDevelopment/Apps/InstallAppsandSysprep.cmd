@@ -9,6 +9,13 @@ REM Install Edge Stable
 REM Add additional apps below here
 REM Contoso App (Example)
 REM msiexec /i d:\Contoso\setup.msi /qn /norestart
+set "anyconnectfolder=D:\Cisco-AnyConnect"
+for %%f in ("%anyconnectfolder%\*.msi") do (
+    set "anyconnectinstaller=%%f"
+)
+if defined anyconnectinstaller (
+    msiexec /i %anyconnectinstaller% /qn /norestart
+)
 powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\CustomizeImage.ps1
 REM The below lines will remove the unattend.xml that gets the machine into audit mode. If not removed, the OS will get stuck booting to audit mode each time.
 REM Also kills the sysprep process in order to automate sysprep generalize
