@@ -6,8 +6,7 @@ function Set-RegistrySetting {
         $RegValueData
     )
     if (-not (Test-Path -Path $RegPath)) {
-        $RegPathModified = $RegPath.Replace(":", "")
-        New-Item -Path Registry::$RegPathModified
+        New-Item -Path $RegPath -Force
     }
     New-ItemProperty -Path $RegPath -Name $RegValueName -PropertyType $RegValueType -Value $RegValueData
 }
@@ -114,7 +113,7 @@ foreach ($desktopApp in $publicDesktopApps) {
     Copy-Item -Path $desktopApp -Destination $publicDesktopPath -Force
 }
 
-Copy-Item -Path "D:\Customations\ITSupport.ico" -Destination "$env:windir\System32" -Force
+Copy-Item -Path "D:\Customizations\ITSupport.ico" -Destination "$env:windir\System32" -Force
 
 $shortcutContent = @"
 [InternetShortcut]
