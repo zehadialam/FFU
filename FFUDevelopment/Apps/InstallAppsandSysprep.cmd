@@ -16,7 +16,7 @@ for %%f in ("%anyconnectfolder%\*.msi") do (
 if defined anyconnectinstaller (
     msiexec /i %anyconnectinstaller% /qn /norestart
 )
-powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\CustomizeImage.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\Set-ImageCustomizations.ps1
 REM The below lines will remove the unattend.xml that gets the machine into audit mode. If not removed, the OS will get stuck booting to audit mode each time.
 REM Also kills the sysprep process in order to automate sysprep generalize
 del c:\windows\panther\unattend\unattend.xml /F /Q
