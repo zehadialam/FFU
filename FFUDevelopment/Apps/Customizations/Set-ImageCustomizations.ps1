@@ -69,6 +69,7 @@ function Set-RegistrySetting {
 function Set-PolicySettings {
     # Start Layout
     Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Explorer" -RegValueName "StartLayoutFile" -RegValueType String -RegValueData "C:\Windows\ITAdmin\taskbarlayout.xml"
+    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Explorer" -RegValueName "LockedStartLayout" -RegValueType DWORD -RegValueData 1
     # Enable periodic registry backups
     Set-RegistrySetting -RegPath "HKLM:\System\CurrentControlSet\Control\Session Manager\Configuration Manager" -RegValueName "EnablePeriodicBackup" -RegValueType DWORD -RegValueData 1
     # Configures the Chat icon on the taskbar
