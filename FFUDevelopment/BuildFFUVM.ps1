@@ -1660,9 +1660,9 @@ function Get-Office {
 
 function Install-WinGet {
     WriteLog "Downloading WinGet and its dependencies..."
-    Start-BitsTransferWithRetry -Source https://aka.ms/getwinget -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    Start-BitsTransferWithRetry -Source https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -Destination "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-    Start-BitsTransferWithRetry -Source https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx -Destination "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
+    Start-BitsTransferWithRetry -Source "https://aka.ms/getwinget" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    Start-BitsTransferWithRetry -Source "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -Destination "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    Start-BitsTransferWithRetry -Source "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx" -Destination "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
     WriteLog "Installing WinGet and its dependencies..."
     Add-AppxPackage -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
     Add-AppxPackage -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
@@ -1702,10 +1702,10 @@ function Get-Apps {
 
             $cmdContent = Get-Content -Path $cmdFile
             New-Item -Path $AppsPath -Name $app -ItemType Directory -Force
-            $appFolder = Split-Path $appFolderPath -Leaf
+            $appFolder = Split-Path -Path $appFolderPath -Leaf
             Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$app"" --exact --download-directory ""$appFolderPath"" --scope machine --source winget"
             $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
-            $installer = Split-Path $installerPath -Leaf
+            $installer = Split-Path -Path $installerPath -Leaf
             $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
             $yamlContent = Get-Content -Path $yamlFile -Raw
             $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
