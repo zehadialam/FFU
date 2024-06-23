@@ -44,12 +44,11 @@ function Remove-UWPApps {
 
 function Copy-CustomizationFile {
     param (
-        [string]$DirectoryPath,
         [string]$SourcePath,
         [string]$DestinationPath
     )
-    if (-not (Test-Path $DirectoryPath -PathType Container)) {
-        New-Item -Path $DirectoryPath -ItemType Directory
+    if (-not (Test-Path $DestinationPath -PathType Container)) {
+        New-Item -Path $DestinationPath -ItemType Directory
     }
     Copy-Item -Path $SourcePath -Destination $DestinationPath -Force
 }
@@ -133,7 +132,7 @@ function Set-PublicDesktopContents {
     Set-Content -Path $requestITSupportShortcutPath -Value $requestITSupportShortcut
     Copy-CustomizationFile -SourcePath "$customizationsFolder\UGA.ico" -DestinationPath "$env:windir\System32"
     $eitsKBShortcut = Build-InternetShortcut -Url "https://uga.teamdynamix.com/TDClient/3190/eitsclientportal/KB/" -IconFile "$env:windir\System32\UGA.ico"
-    $eitsKBShortcutPath = Join-Path -Path $eitsKBShortcut -ChildPath "EITS Knowledgebase.url"
+    $eitsKBShortcutPath = Join-Path -Path $publicDesktopPath -ChildPath "EITS Knowledgebase.url"
     Set-Content -Path $eitsKBShortcutPath -Value $eitsKBShortcut
 }
 
