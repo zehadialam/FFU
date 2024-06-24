@@ -1678,12 +1678,18 @@ function Get-Apps {
         [string]$AppsList
     )
     $apps = Get-Content -Path $AppsList
+    if (-not $apps) {
+        return
+    }
+
     $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $wingetInstalled) {
         Install-WinGet
     }
 
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
+    $backupCmdFile = $cmdFile + ".bak"
+    Copy-Item -Path $cmdFile -Destination $backupCmdFile -Force
     $lineNumber = 12
 
     foreach ($app in $apps) {
@@ -2865,8 +2871,14 @@ function Get-FFUEnvironment {
         WriteLog "Removing $EdgePath"
         Remove-Item -Path $EdgePath -Recurse -Force
         WriteLog 'Removal complete'
-    }    
-
+    }
+    $excludeFolders = @("Customizations", "Cisco-AnyConnect", "Office") 
+    $folders = Get-ChildItem -Path $AppsPath -Directory
+    foreach ($folder in $folders) {
+        if ($excludeFolders -notcontains $folder.Name) {
+            Remove-Item -Path $folder.FullName -Recurse -Force
+        }
+    }
     Writelog 'Removing dirty.txt file'
     Remove-Item -Path "$FFUDevelopmentPath\dirty.txt" -Force
     WriteLog "Cleanup complete"
@@ -2878,6 +2890,13 @@ function Remove-FFU {
     WriteLog "Removal complete"
 }
 function Clear-InstallAppsandSysprep {
+    $cmdFile = "$AppsPath\InstallAppsandSysprep.cmd"
+    $cmdBackupFile = "$AppsPath\InstallAppsandSysprep.cmd.bak"
+    if (Test-Path -Path $cmdBackupFile -PathType Leaf) {
+        WriteLog "Restoring original InstallAppsandSysprep.cmd file"
+        Remove-Item -Path $cmdFile -Force
+        Rename-Item -Path $cmdBackupFile -NewName $cmdFile -Force
+    }
     if ($UpdateLatestDefender) {
         WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove Defender Platform Update"
         $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
