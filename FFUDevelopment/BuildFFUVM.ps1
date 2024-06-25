@@ -1682,6 +1682,16 @@ function Get-Apps {
         return
     }
 
+    $win32Apps = @()
+    $storeApps = @()
+    $apps | ForEach-Object {
+        if ($_ -like 'win32:*') {
+            $win32Apps += $_.Substring(6)
+        } elseif ($_ -like 'store:*') {
+            $storeApps += $_.Substring(6)
+        }
+    }
+
     $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $wingetInstalled) {
         Install-WinGet
@@ -1692,51 +1702,92 @@ function Get-Apps {
     Copy-Item -Path $cmdFile -Destination $backupCmdFile -Force
     $lineNumber = 12
 
-    foreach ($app in $apps) {
-        try {
-            $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name ""$app"" --exact --source winget"
-            if ($wingetSearchResult -eq "No package found matching input criteria.") {
-                WriteLog "$wingetSearchResult for the application $app"
-                continue
+    if ($win32Apps) {
+        New-Item -Path $AppsPath -Name "Win32" -ItemType Directory -Force
+        foreach ($win32App in $win32Apps) {
+            try {
+                $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name --exact ""$win32App"" --source winget"
+                if ($wingetSearchResult -eq "No package found matching input criteria.") {
+                    WriteLog "$wingetSearchResult for the application $win32App"
+                    continue
+                }
+                $appFolderPath = Join-Path -Path $AppsPath -ChildPath $win32App
+                if (Test-Path -Path $appFolderPath -PathType Container) {
+                    WriteLog "Skipping the download of $win32App since it already exists in $AppsPath."
+                    continue
+                }
+                $cmdContent = Get-Content -Path $cmdFile
+                $appFolder = Split-Path -Path $appFolderPath -Leaf
+                New-Item -Path "$AppsPath\Win32" -Name $win32App -ItemType Directory -Force
+                Invoke-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$win32App"" --download-directory ""$appFolderPath"" --scope machine --source winget"
+                $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
+                $installer = Split-Path -Path $installerPath -Leaf
+                $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
+                $yamlContent = Get-Content -Path $yamlFile -Raw
+                $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
+                if (-not $silentInstallSwitch) {
+                    WriteLog "Silent install switch for $win32App could not be found. Skipping the inclusion of $win32App."
+                    continue
+                }
+                $installerFileExtension = [System.IO.Path]::GetExtension($installer)
+                if ($installerFileExtension -eq ".exe") {
+                    $silentInstallCommand = "`"D:\$appFolder\$installer`" $silentInstallSwitch"
+                } elseif ($installerFileExtension -eq ".msi") {
+                    $silentInstallCommand = "msiexec /i `"D:\$appFolder\$installer`" $silentInstallSwitch"
+                }
+                # Insert the new content at the specified line number
+                $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
+                Set-Content -Path $cmdFile -Value $cmdContent
+                $lineNumber++
             }
-
-            $appFolderPath = Join-Path -Path $AppsPath -ChildPath $app
-            if (Test-Path -Path $appFolderPath -PathType Container) {
-                WriteLog "Skipping the download of $app since it already exists in $AppsPath."
-                continue
+            catch {
+                WriteLog "Error occurred while processing $win32App : $_"
+                throw $_
             }
-
-            $cmdContent = Get-Content -Path $cmdFile
-            New-Item -Path $AppsPath -Name $app -ItemType Directory -Force
-            $appFolder = Split-Path -Path $appFolderPath -Leaf
-            Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$app"" --exact --download-directory ""$appFolderPath"" --scope machine --source winget"
-            $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
-            $installer = Split-Path -Path $installerPath -Leaf
-            $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
-            $yamlContent = Get-Content -Path $yamlFile -Raw
-            $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
-            if (-not $silentInstallSwitch) {
-                WriteLog "Silent install switch for $app could not be found. Skipping the inclusion of $app."
-                continue
+        }
+    }
+    if ($storeApps) {
+        New-Item -Path $AppsPath -Name "MSStore" -ItemType Directory -Force
+        foreach ($storeApp in $storeApps) {
+            try {
+                $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name --exact ""$storeApp"" --source msstore"
+                if ($wingetSearchResult -eq "No package found matching input criteria.") {
+                    WriteLog "$wingetSearchResult for the application $storeApp"
+                    continue
+                }
+                $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+                $UpdatedcmdContent = $CmdContent -replace 'set "SKIP_MSSTORE=1"', 'set "SKIP_MSSTORE="'
+                Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
+                New-Item -Path "$AppsPath\MSStore" -Name $storeApp -ItemType Directory -Force
+                Invoke-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$storeApp"" --download-directory ""$appFolderPath"" --accept-package-agreements --accept-source-agreements --scope machine --source msstore"
+                $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
+                $latestPackage = ""
+                $latestDate = [datetime]::MinValue
+                foreach ($package in $packages) {
+                    $signature = Get-AuthenticodeSignature -FilePath $package.FullName
+                    if ($signature.Status -eq 'Valid') {
+                        $signatureDate = $signature.SignerCertificate.NotBefore
+                        if ($signatureDate -gt $latestDate) {
+                            $latestPackage = $package.FullName
+                            $latestDate = $signatureDate
+                        }
+                    }
+                }
+                foreach ($package in $packages) {
+                    if ($package.FullName -ne $latestPackage) {
+                        try {
+                            Remove-Item -Path $package.FullName -Force
+                        }
+                        catch {
+                            WriteLog "Failed to delete: $($package.FullName) - $_"
+                        }
+                    }
+                }
             }
-
-            $installerFileExtension = [System.IO.Path]::GetExtension($installer)
-            if ($installerFileExtension -eq ".exe") {
-                $silentInstallCommand = "`"D:\$appFolder\$installer`" $silentInstallSwitch"
-            } 
-
-            if ($installerFileExtension -eq ".msi") {
-                $silentInstallCommand = "msiexec /i `"D:\$appFolder\$installer`" $silentInstallSwitch"
+            catch {
+                WriteLog "Error occurred while processing $storeApp : $_"
+                throw $_
             }
-
-            # Insert the new content at the specified line number
-            $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
-            Set-Content -Path $cmdFile -Value $cmdContent
-            $lineNumber++
-        } 
-        catch {
-            WriteLog "Error occurred while processing $app : $_"
-            throw $_
         }
     }
 }

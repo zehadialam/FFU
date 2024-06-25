@@ -1,9 +1,10 @@
-7-Zip
-CrystalDiskInfo
-Everything
-Google Chrome
-Mozilla Firefox
-LockHunter
-Revo Uninstaller
-VLC media player
-Zoom Workplace
+win32:7-Zip
+win32:CrystalDiskInfo
+win32:Everything
+win32:Google Chrome
+win32:Mozilla Firefox
+win32:LockHunter
+win32:Revo Uninstaller
+win32:VLC media player
+win32:Zoom Workplace
+store:Company Portal
