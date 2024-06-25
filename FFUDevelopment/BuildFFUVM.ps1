@@ -1660,7 +1660,8 @@ function Get-Office {
 
 function Install-WinGet {
     WriteLog "Downloading WinGet and its dependencies..."
-    Start-BitsTransferWithRetry -Source "https://aka.ms/getwinget" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+    # Preview release is needed to enable storeDownload experimental feature
+    Start-BitsTransferWithRetry -Source "https://aka.ms/getwingetpreview" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
     Start-BitsTransferWithRetry -Source "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -Destination "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
     Start-BitsTransferWithRetry -Source "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx" -Destination "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
     WriteLog "Installing WinGet and its dependencies..."
@@ -1671,6 +1672,102 @@ function Install-WinGet {
     Remove-Item -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction SilentlyContinue
     Remove-Item -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx" -Force -ErrorAction SilentlyContinue
     Remove-Item -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx" -Force -ErrorAction SilentlyContinue
+    $wingetSettingsFile = "$env:LOCALAPPDATA\Local\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\settings.json"
+    $backupWingetSettingsFile = $wingetSettingsFile + ".bak"
+    Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force
+    $wingetSettings = @(
+        '{'
+        '    "$schema": "https://aka.ms/winget-settings.schema.json",'
+        '    '
+        '    // For documentation on these settings, see: https://aka.ms/winget-settings'
+        '    "experimentalFeatures": {'
+        '        "storeDownload": true'
+        '    },'
+        '    "logging": {'
+        '        "level": "verbose"'
+        '    }'
+        '}'
+    )
+    $wingetSettingsContent = $wingetSettings -join "`n"
+    $wingetSettingsContent | Out-File -FilePath $wingetSettingsFile -Encoding utf8 -Force
+}
+
+function Get-Win32App {
+    param (
+        [string]$Win32App,
+        [int]$LineNumber
+    )
+    $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name --exact ""$Win32App"" --source winget"
+    if ($wingetSearchResult -eq "No package found matching input criteria.") {
+        WriteLog "$wingetSearchResult for the application $Win32App"
+        return
+    }
+    $appFolderPath = Join-Path -Path $AppsPath -ChildPath $Win32App
+    if (Test-Path -Path $appFolderPath -PathType Container) {
+        WriteLog "Skipping the download of $Win32App since it already exists in $AppsPath."
+        return
+    }
+    $cmdContent = Get-Content -Path $cmdFile
+    $appFolder = Split-Path -Path $appFolderPath -Leaf
+    New-Item -Path "$AppsPath\Win32" -Name $Win32App -ItemType Directory -Force
+    Invoke-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$Win32App"" --download-directory ""$appFolderPath"" --scope machine --source winget"
+    $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
+    $installer = Split-Path -Path $installerPath -Leaf
+    $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
+    $yamlContent = Get-Content -Path $yamlFile -Raw
+    $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
+    if (-not $silentInstallSwitch) {
+        WriteLog "Silent install switch for $Win32App could not be found. Skipping the inclusion of $Win32App."
+        return
+    }
+    $installerFileExtension = [System.IO.Path]::GetExtension($installer)
+    if ($installerFileExtension -eq ".exe") {
+        $silentInstallCommand = "`"D:\$appFolder\$installer`" $silentInstallSwitch"
+    } elseif ($installerFileExtension -eq ".msi") {
+        $silentInstallCommand = "msiexec /i `"D:\$appFolder\$installer`" $silentInstallSwitch"
+    }
+    $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
+    Set-Content -Path $cmdFile -Value $cmdContent
+}
+
+function Get-StoreApp {
+    param (
+        [string]$StoreApp
+    )
+    $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name --exact ""$StoreApp"" --source msstore"
+    if ($wingetSearchResult -eq "No package found matching input criteria.") {
+        WriteLog "$wingetSearchResult for the application $StoreApp"
+        return
+    }
+    $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+    $UpdatedcmdContent = $CmdContent -replace 'set "SKIP_MSSTORE=1"', 'set "SKIP_MSSTORE="'
+    Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
+    New-Item -Path "$AppsPath\MSStore" -Name $StoreApp -ItemType Directory -Force
+    Invoke-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$StoreApp"" --download-directory ""$appFolderPath"" --accept-package-agreements --accept-source-agreements --scope machine --source msstore"
+    $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
+    $latestPackage = ""
+    $latestDate = [datetime]::MinValue
+    foreach ($package in $packages) {
+        $signature = Get-AuthenticodeSignature -FilePath $package.FullName
+        if ($signature.Status -eq 'Valid') {
+            $signatureDate = $signature.SignerCertificate.NotBefore
+            if ($signatureDate -gt $latestDate) {
+                $latestPackage = $package.FullName
+                $latestDate = $signatureDate
+            }
+        }
+    }
+    foreach ($package in $packages) {
+        if ($package.FullName -ne $latestPackage) {
+            try {
+                Remove-Item -Path $package.FullName -Force
+            }
+            catch {
+                WriteLog "Failed to delete: $($package.FullName) - $_"
+                throw $_
+            }
+        }
+    }
 }
 
 function Get-Apps {
@@ -1681,7 +1778,6 @@ function Get-Apps {
     if (-not $apps) {
         return
     }
-
     $win32Apps = @()
     $storeApps = @()
     $apps | ForEach-Object {
@@ -1691,53 +1787,28 @@ function Get-Apps {
             $storeApps += $_.Substring(6)
         }
     }
-
     $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $wingetInstalled) {
         Install-WinGet
     }
-
+    $wingetVersion = Invoke-Process -FilePath winget.exe -ArgumentList "--version"
+    # Preview release is needed to enable storeDownload experimental feature
+    if ($wingetVersion -ne "v1.9.1551-preview") {
+        Install-WinGet
+    }
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
     $backupCmdFile = $cmdFile + ".bak"
     Copy-Item -Path $cmdFile -Destination $backupCmdFile -Force
     $lineNumber = 12
-
+    $win32Folder = Join-Path -Path $AppsPath -ChildPath "Win32"
+    $storeAppsFolder = Join-Path -Path $AppsPath -ChildPath "MSStore"
     if ($win32Apps) {
-        New-Item -Path $AppsPath -Name "Win32" -ItemType Directory -Force
+        if (-not (Test-Path -Path $win32Folder -PathType Container)) {
+            New-Item -Path $win32Folder -ItemType Directory -Force
+        }
         foreach ($win32App in $win32Apps) {
             try {
-                $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name --exact ""$win32App"" --source winget"
-                if ($wingetSearchResult -eq "No package found matching input criteria.") {
-                    WriteLog "$wingetSearchResult for the application $win32App"
-                    continue
-                }
-                $appFolderPath = Join-Path -Path $AppsPath -ChildPath $win32App
-                if (Test-Path -Path $appFolderPath -PathType Container) {
-                    WriteLog "Skipping the download of $win32App since it already exists in $AppsPath."
-                    continue
-                }
-                $cmdContent = Get-Content -Path $cmdFile
-                $appFolder = Split-Path -Path $appFolderPath -Leaf
-                New-Item -Path "$AppsPath\Win32" -Name $win32App -ItemType Directory -Force
-                Invoke-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$win32App"" --download-directory ""$appFolderPath"" --scope machine --source winget"
-                $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
-                $installer = Split-Path -Path $installerPath -Leaf
-                $yamlFile = Get-ChildItem -Path "$appFolderPath\*" -Include *.yaml -File
-                $yamlContent = Get-Content -Path $yamlFile -Raw
-                $silentInstallSwitch = [regex]::Match($yamlContent, 'Silent:\s*(.+)').Groups[1].Value
-                if (-not $silentInstallSwitch) {
-                    WriteLog "Silent install switch for $win32App could not be found. Skipping the inclusion of $win32App."
-                    continue
-                }
-                $installerFileExtension = [System.IO.Path]::GetExtension($installer)
-                if ($installerFileExtension -eq ".exe") {
-                    $silentInstallCommand = "`"D:\$appFolder\$installer`" $silentInstallSwitch"
-                } elseif ($installerFileExtension -eq ".msi") {
-                    $silentInstallCommand = "msiexec /i `"D:\$appFolder\$installer`" $silentInstallSwitch"
-                }
-                # Insert the new content at the specified line number
-                $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
-                Set-Content -Path $cmdFile -Value $cmdContent
+                Get-Win32App -Win32App $win32App -LineNumber $lineNumber
                 $lineNumber++
             }
             catch {
@@ -1747,42 +1818,12 @@ function Get-Apps {
         }
     }
     if ($storeApps) {
-        New-Item -Path $AppsPath -Name "MSStore" -ItemType Directory -Force
+        if (-not (Test-Path -Path $storeAppsFolder -PathType Container)) {
+            New-Item -Path $storeAppsFolder -ItemType Directory -Force
+        }
         foreach ($storeApp in $storeApps) {
             try {
-                $wingetSearchResult = Invoke-Process -FilePath winget.exe -ArgumentList "search --name --exact ""$storeApp"" --source msstore"
-                if ($wingetSearchResult -eq "No package found matching input criteria.") {
-                    WriteLog "$wingetSearchResult for the application $storeApp"
-                    continue
-                }
-                $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
-                $UpdatedcmdContent = $CmdContent -replace 'set "SKIP_MSSTORE=1"', 'set "SKIP_MSSTORE="'
-                Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
-                New-Item -Path "$AppsPath\MSStore" -Name $storeApp -ItemType Directory -Force
-                Invoke-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$storeApp"" --download-directory ""$appFolderPath"" --accept-package-agreements --accept-source-agreements --scope machine --source msstore"
-                $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
-                $latestPackage = ""
-                $latestDate = [datetime]::MinValue
-                foreach ($package in $packages) {
-                    $signature = Get-AuthenticodeSignature -FilePath $package.FullName
-                    if ($signature.Status -eq 'Valid') {
-                        $signatureDate = $signature.SignerCertificate.NotBefore
-                        if ($signatureDate -gt $latestDate) {
-                            $latestPackage = $package.FullName
-                            $latestDate = $signatureDate
-                        }
-                    }
-                }
-                foreach ($package in $packages) {
-                    if ($package.FullName -ne $latestPackage) {
-                        try {
-                            Remove-Item -Path $package.FullName -Force
-                        }
-                        catch {
-                            WriteLog "Failed to delete: $($package.FullName) - $_"
-                        }
-                    }
-                }
+                Get-StoreApp $storeApp
             }
             catch {
                 WriteLog "Error occurred while processing $storeApp : $_"
