@@ -1674,6 +1674,7 @@ function Install-WinGet {
     Remove-Item -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx" -Force -ErrorAction SilentlyContinue
     $wingetSettingsFile = "$env:LOCALAPPDATA\Local\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\settings.json"
     $backupWingetSettingsFile = $wingetSettingsFile + ".bak"
+    WriteLog "Backing up existing settings.json file"
     Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force
     $wingetSettings = @(
         '{'
@@ -1689,6 +1690,7 @@ function Install-WinGet {
         '}'
     )
     $wingetSettingsContent = $wingetSettings -join "`n"
+    WriteLog "Creating settings.json file to allow the storeDownload feature."
     $wingetSettingsContent | Out-File -FilePath $wingetSettingsFile -Encoding utf8 -Force
 }
 
