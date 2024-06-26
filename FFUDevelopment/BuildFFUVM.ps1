@@ -1812,7 +1812,7 @@ function Get-Apps {
     }
     $wingetVersion = & winget.exe --version
     # Preview release is needed to enable storeDownload experimental feature
-    if ($wingetVersion -ne "v1.9.1551-preview") {
+    if ($wingetVersion -like "*preview*") {
         Install-WinGet -InstallWithDependencies $false
     }
     $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
@@ -1827,6 +1827,7 @@ function Get-Apps {
         }
         foreach ($win32App in $win32Apps) {
             try {
+                WriteLog "Getting $win32App app"
                 Get-Win32App -Win32App $win32App -LineNumber $lineNumber
                 $lineNumber++
             }

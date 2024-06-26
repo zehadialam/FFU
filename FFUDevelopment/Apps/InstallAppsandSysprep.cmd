@@ -22,7 +22,7 @@ if /i "%SKIP_MSSTORE%"=="true" (
     echo Skipping MS Store installation due to SKIP_MSSTORE flag.
     goto :remaining
 )
-set "basepath=C:\MSStore"
+set "basepath=D:\MSStore"
 for /r "%basepath%" %%F in (*.appxbundle *.msixbundle) do (
     set "mainpackage=%%F"
     set "dependenciesfolder=%%~dpFDependencies"
