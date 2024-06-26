@@ -1,5 +1,4 @@
 setlocal enabledelayedexpansion
-
 REM Put each app install on a separate line
 REM M365 Apps/Office ProPlus
 REM d:\Office\setup.exe /configure d:\office\DeployFFU.xml
@@ -18,37 +17,33 @@ for %%f in ("%anyconnectfolder%\*.msi") do (
 if defined anyconnectinstaller (
     msiexec /i %anyconnectinstaller% /qn /norestart
 )
-@echo off
-set "SKIP_MSSTORE=1"
-if not defined SKIP_MSSTORE (
-    set "msstore_folder=D:\MSStore"
-    for /D %%d in ("%msstore_folder%\*") do (
-        set "main_package="
-        REM Find the main package file with .appxbundle or .msixbundle extension
-        for %%f in ("%%d\*.appxbundle" "%%d\*.msixbundle") do (
-            if exist "%%f" (
-                set "main_package=%%f"
+set "SKIP_MSSTORE=false"
+if /i "%SKIP_MSSTORE%"=="true" (
+    echo Skipping MS Store installation due to SKIP_MSSTORE flag.
+    goto :remaining
+)
+set "basepath=C:\MSStore"
+for /r "%basepath%" %%F in (*.appxbundle *.msixbundle) do (
+    set "mainpackage=%%F"
+    set "dependenciesfolder=%%~dpFDependencies"
+    if exist "!dependenciesfolder!" (
+        set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:"!mainpackage!""
+        for %%G in ("!dependenciesfolder!\*.appx") do (
+            set "dism_command=!dism_command! /DependencyPackagePath:"%%G""
+        )
+        set "license_option=/SkipLicense"
+        for %%H in ("!dependenciesfolder!\*.xml") do (
+            if exist "%%H" (
+                set "license_option=/LicensePath:"%%H""
             )
         )
-        if defined main_package (
-            set "dependency_folder=%%d\Dependencies"
-            set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:!main_package!"
-            for %%g in ("!dependency_folder!\*.appx") do (
-                REM Concatenate the dependency package path to the command
-                set "dism_command=!dism_command! /DependencyPackagePath:%%g"
-            )
-            set "license_option=/SkipLicense"
-            for %%h in ("!dependency_folder!\*.xml") do (
-                if exist "%%h" (
-                    set "license_option=/LicensePath:%%h"
-                )
-            )
-            set "dism_command=!dism_command! !license_option! /Region:All"
-            echo !dism_command!
-            !dism_command!
-        )
+        set "dism_command=!dism_command! !license_option! /Region:All"
+        echo !dism_command!
+        !dism_command!
+        echo Installation completed for package: !mainpackage!
     )
 )
+:remaining
 endlocal
 @echo on
 powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\Set-ImageCustomizations.ps1
