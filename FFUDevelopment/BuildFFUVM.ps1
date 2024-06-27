@@ -1743,6 +1743,7 @@ function Get-Win32App {
     } elseif ($installerFileExtension -eq ".msi") {
         $silentInstallCommand = "msiexec /i `"D:\win32\$appFolder\$installer`" $silentInstallSwitch"
     }
+    $cmdFile = "$AppsPath\InstallAppsandSysprep.cmd"
     $cmdContent = Get-Content -Path $cmdFile
     $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
     Set-Content -Path $cmdFile -Value $cmdContent
@@ -1766,7 +1767,7 @@ function Get-StoreApp {
     # New-Item -Path "$AppsPath\MSStore" -Name $StoreApp -ItemType Directory -Force
     New-Item -Path $appFolderPath -ItemType Directory -Force
     $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
-    $UpdatedcmdContent = $CmdContent -replace 'set "SKIP_MSSTORE=true"', 'set "SKIP_MSSTORE=false"'
+    $UpdatedcmdContent = $CmdContent -replace 'set "INSTALL_MSSTORE=false"', 'set "INSTALL_MSSTORE=true"'
     Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
     Start-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$StoreApp"" --download-directory ""$appFolderPath"" --accept-package-agreements --accept-source-agreements --scope machine --source msstore" -Wait -NoNewWindow
     $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
@@ -2991,9 +2992,9 @@ function Get-FFUEnvironment {
         Remove-Item -Path $EdgePath -Recurse -Force
         WriteLog 'Removal complete'
     }
-    Remove-Item -Path "$Apps\Win32" -Recurse -Force
-    Remove-Item -Path "$Apps\MSStore" -Recurse -Force
-    # Clear-InstallAppsandSysprep
+    Remove-Item -Path "$AppsPath\Win32" -Recurse -Force
+    Remove-Item -Path "$AppsPath\MSStore" -Recurse -Force
+    Clear-InstallAppsandSysprep
     Writelog 'Removing dirty.txt file'
     Remove-Item -Path "$FFUDevelopmentPath\dirty.txt" -Force
     WriteLog "Cleanup complete"
@@ -3008,6 +3009,10 @@ function Clear-InstallAppsandSysprep {
     $cmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove win32 app install commands"
     $cmdContent -notmatch "D:\\win32*" | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+    WriteLog "Setting MSStore installation condition to false"
+    $UpdatedcmdContent = $cmdContent -replace 'set "INSTALL_MSSTORE=true"', 'set "INSTALL_MSSTORE=false"'
+    Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
+    $cmdContent
     if ($UpdateLatestDefender) {
         WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove Defender Platform Update"
         $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
@@ -3551,6 +3556,15 @@ try {
 catch {
     Write-Host 'Cleaning up InstallAppsandSysprep.cmd failed'
     Writelog "Cleaning up InstallAppsandSysprep.cmd failed with error $_"
+    throw $_
+}
+try {
+    WriteLog "Cleaning up Win32 and MSStore folders"
+    Remove-Item -Path "$AppsPath\Win32" -Recurse -Force
+    Remove-Item -Path "$AppsPath\MSStore" -Recurse -Force
+}
+catch {
+    WriteLog "$_"
     throw $_
 }
 #Create Deployment Media
