@@ -1686,8 +1686,10 @@ function Install-WinGet {
     }
     $wingetSettingsFile = "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\settings.json"
     $backupWingetSettingsFile = $wingetSettingsFile + ".bak"
-    WriteLog "Backing up existing settings.json file"
-    Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force
+    if (-not (Test-Path -Path $backupWingetSettingsFile -PathType Leaf)) {
+        WriteLog "Backing up existing settings.json file"
+        Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force
+    }
     $wingetSettings = @(
         '{'
         '    "$schema": "https://aka.ms/winget-settings.schema.json",'
@@ -1721,8 +1723,8 @@ function Get-Win32App {
         WriteLog "Skipping the download of $Win32App since it already exists in $AppsPath."
         return
     }
-    New-Item -Path "$AppsPath\Win32" -Name $Win32App -ItemType Directory -Force
-    $cmdContent = Get-Content -Path $cmdFile
+    # New-Item -Path "$AppsPath\Win32" -Name $Win32App -ItemType Directory -Force
+    New-Item -Path $appFolderPath -ItemType Directory -Force
     $appFolder = Split-Path -Path $appFolderPath -Leaf
     Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$Win32App"" --exact --download-directory ""$appFolderPath"" --scope machine --source winget"
     $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
@@ -1740,6 +1742,7 @@ function Get-Win32App {
     } elseif ($installerFileExtension -eq ".msi") {
         $silentInstallCommand = "msiexec /i `"D:\win32\$appFolder\$installer`" $silentInstallSwitch"
     }
+    $cmdContent = Get-Content -Path $cmdFile
     $cmdContent = $cmdContent[0..($lineNumber - 2)] + $silentInstallCommand.Trim() + $cmdContent[($lineNumber - 1)..($cmdContent.Length - 1)]
     Set-Content -Path $cmdFile -Value $cmdContent
 }
@@ -1758,7 +1761,8 @@ function Get-StoreApp {
         WriteLog "Skipping the download of $StoreApp since it already exists in $AppsPath."
         return
     }
-    New-Item -Path "$AppsPath\MSStore" -Name $StoreApp -ItemType Directory -Force
+    # New-Item -Path "$AppsPath\MSStore" -Name $StoreApp -ItemType Directory -Force
+    New-Item -Path $appFolderPath -ItemType Directory -Force
     $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     $UpdatedcmdContent = $CmdContent -replace 'set "SKIP_MSSTORE=true"', 'set "SKIP_MSSTORE=false"'
     Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
@@ -1766,6 +1770,8 @@ function Get-StoreApp {
     $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
     $latestPackage = ""
     $latestDate = [datetime]::MinValue
+    # WinGet downloads multiple versions of a store app.
+    # Identifying the latest version of the package based on the date of the file signature.
     foreach ($package in $packages) {
         $signature = Get-AuthenticodeSignature -FilePath $package.FullName
         if ($signature.Status -eq 'Valid') {
@@ -1776,6 +1782,7 @@ function Get-StoreApp {
             }
         }
     }
+    # Removing all packages that are not the latest version
     foreach ($package in $packages) {
         if ($package.FullName -ne $latestPackage) {
             try {
@@ -1815,9 +1822,6 @@ function Get-Apps {
     if ($wingetVersion -like "*preview*") {
         Install-WinGet -InstallWithDependencies $false
     }
-    $cmdFile = Join-Path -Path $AppsPath -ChildPath "InstallAppsandSysprep.cmd"
-    $backupCmdFile = $cmdFile + ".bak"
-    Copy-Item -Path $cmdFile -Destination $backupCmdFile -Force
     $lineNumber = 12
     $win32Folder = Join-Path -Path $AppsPath -ChildPath "Win32"
     $storeAppsFolder = Join-Path -Path $AppsPath -ChildPath "MSStore"
@@ -1843,6 +1847,7 @@ function Get-Apps {
         }
         foreach ($storeApp in $storeApps) {
             try {
+                WriteLog "Getting $storeApp app"
                 Get-StoreApp $storeApp
             }
             catch {
@@ -3002,13 +3007,9 @@ function Remove-FFU {
     WriteLog "Removal complete"
 }
 function Clear-InstallAppsandSysprep {
-    $cmdFile = "$AppsPath\InstallAppsandSysprep.cmd"
-    $cmdBackupFile = "$AppsPath\InstallAppsandSysprep.cmd.bak"
-    if (Test-Path -Path $cmdBackupFile -PathType Leaf) {
-        WriteLog "Restoring original InstallAppsandSysprep.cmd file"
-        Remove-Item -Path $cmdFile -Force
-        Rename-Item -Path $cmdBackupFile -NewName $cmdFile -Force
-    }
+    $cmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+    WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove win32 app install commands"
+    $cmdContent -notmatch "D:\\win32*" | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     if ($UpdateLatestDefender) {
         WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove Defender Platform Update"
         $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
