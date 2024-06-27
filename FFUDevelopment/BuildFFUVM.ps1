@@ -1677,6 +1677,7 @@ function Install-WinGet {
         Remove-Item -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx" -Force -ErrorAction SilentlyContinue
         Remove-Item -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx" -Force -ErrorAction SilentlyContinue
     } else {
+        # If WinGet was already installed, then installing the dependencies can cause an error if the system has a newer version of the dependencies that are downloaded
         WriteLog "Downloading WinGet..."
         Start-BitsTransferWithRetry -Source "https://aka.ms/getwingetpreview" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
         WriteLog "Installing WinGet..."
@@ -1747,6 +1748,7 @@ function Get-Win32App {
     Set-Content -Path $cmdFile -Value $cmdContent
 }
 
+# Non-in-box apps that work - Power BI Desktop, Remote Desktop, Company Portal
 function Get-StoreApp {
     param (
         [string]$StoreApp
@@ -1819,10 +1821,10 @@ function Get-Apps {
     }
     $wingetVersion = & winget.exe --version
     # Preview release is needed to enable storeDownload experimental feature
-    if ($wingetVersion -like "*preview*") {
+    if (-not ($wingetVersion -like "*preview*")) {
         Install-WinGet -InstallWithDependencies $false
     }
-    $lineNumber = 12
+    $lineNumber = 13
     $win32Folder = Join-Path -Path $AppsPath -ChildPath "Win32"
     $storeAppsFolder = Join-Path -Path $AppsPath -ChildPath "MSStore"
     if ($win32Apps) {
@@ -2989,13 +2991,9 @@ function Get-FFUEnvironment {
         Remove-Item -Path $EdgePath -Recurse -Force
         WriteLog 'Removal complete'
     }
-    $excludeFolders = @("Customizations", "Cisco-AnyConnect", "Office") 
-    $folders = Get-ChildItem -Path $AppsPath -Directory
-    foreach ($folder in $folders) {
-        if ($excludeFolders -notcontains $folder.Name) {
-            Remove-Item -Path $folder.FullName -Recurse -Force
-        }
-    }
+    Remove-Item -Path "$Apps\Win32" -Recurse -Force
+    Remove-Item -Path "$Apps\MSStore" -Recurse -Force
+    # Clear-InstallAppsandSysprep
     Writelog 'Removing dirty.txt file'
     Remove-Item -Path "$FFUDevelopmentPath\dirty.txt" -Force
     WriteLog "Cleanup complete"
