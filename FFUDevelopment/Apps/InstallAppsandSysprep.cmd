@@ -17,35 +17,36 @@ for %%f in ("%anyconnectfolder%\*.msi") do (
 if defined anyconnectinstaller (
     msiexec /i %anyconnectinstaller% /qn /norestart
 )
-set "SKIP_MSSTORE=false"
-if /i "%SKIP_MSSTORE%"=="true" (
-    echo Skipping MS Store installation due to SKIP_MSSTORE flag.
+set "INSTALL_MSSTORE=false"
+if /i "%INSTALL_MSSTORE%"=="false" (
+    echo Skipping MS Store installation due to INSTALL_MSSTORE flag.
     goto :remaining
 )
 set "basepath=D:\MSStore"
-for /r "%basepath%" %%F in (*.appxbundle *.msixbundle) do (
-    set "mainpackage=%%F"
-    set "dependenciesfolder=%%~dpFDependencies"
-    if exist "!dependenciesfolder!" (
-        set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:"!mainpackage!""
-        for %%G in ("!dependenciesfolder!\*.appx") do (
-            set "dism_command=!dism_command! /DependencyPackagePath:"%%G""
+for /d %%D in ("%basepath%\*") do (
+    set "appfolder=%%D"
+    set "mainpackage="
+    set "dependenciesfolder=!appfolder!\Dependencies"
+    for %%F in ("!appfolder!\*") do (
+        if not "%%~dpF"=="!dependenciesfolder!\" (
+            set "mainpackage=%%F"
         )
-        set "license_option=/SkipLicense"
-        for %%H in ("!dependenciesfolder!\*.xml") do (
-            if exist "%%H" (
-                set "license_option=/LicensePath:"%%H""
+    )
+    if defined mainpackage (
+        if exist "!dependenciesfolder!" (
+            set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:"!mainpackage!""
+            for %%G in ("!dependenciesfolder!\*") do (
+                set "dism_command=!dism_command! /DependencyPackagePath:"%%G""
             )
+            set "dism_command=!dism_command! /SkipLicense /Region:All"
+            echo !dism_command!
+            !dism_command!
+            echo Installation completed for package: !mainpackage!
         )
-        set "dism_command=!dism_command! !license_option! /Region:All"
-        echo !dism_command!
-        !dism_command!
-        echo Installation completed for package: !mainpackage!
     )
 )
 :remaining
 endlocal
-@echo on
 powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\Set-ImageCustomizations.ps1
 REM The below lines will remove the unattend.xml that gets the machine into audit mode. If not removed, the OS will get stuck booting to audit mode each time.
 REM Also kills the sysprep process in order to automate sysprep generalize
