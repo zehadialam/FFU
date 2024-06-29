@@ -1663,51 +1663,63 @@ function Install-WinGet {
         [bool]$InstallWithDependencies
     )
     if ($InstallWithDependencies) {
-        WriteLog "Downloading WinGet and its dependencies..."
-        # Preview release is needed to enable storeDownload experimental feature
-        Start-BitsTransferWithRetry -Source "https://aka.ms/getwingetpreview" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-        Start-BitsTransferWithRetry -Source "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -Destination "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-        Start-BitsTransferWithRetry -Source "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx" -Destination "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
-        WriteLog "Installing WinGet and its dependencies..."
-        Add-AppxPackage -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-        Add-AppxPackage -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
-        Add-AppxPackage -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-        WriteLog "Removing WinGet installer and dependencies..."
-        Remove-Item -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx" -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx" -Force -ErrorAction SilentlyContinue
-    } else {
+        $dependencies = @(
+            @{
+                Source = "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx"
+                Destination = "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+            },
+            @{
+                Source = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx"
+                Destination = "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
+            }
+        )
+        $wingetPreviewLink = "https://aka.ms/getwingetpreview"
+        $wingetPackageDestination = "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+        Start-BitsTransferWithRetry -Source $wingetPreviewLink -Destination $wingetPackageDestination
+        foreach ($dependency in $dependencies) {
+            Start-BitsTransferWithRetry -Source $dependency.Source -Destination $dependency.Destination
+            Add-AppxPackage -Path $dependency.Destination
+            Remove-Item -Path $dependency.Destination -Force -ErrorAction SilentlyContinue
+        }
+        Add-AppxPackage -Path $wingetPackageDestination
+        Remove-Item -Path $wingetPackageDestination -Force -ErrorAction SilentlyContinue
+    } 
+    else {
         # If WinGet was already installed, then installing the dependencies can cause an error if the system has a newer version of the dependencies than the ones downloaded.
         WriteLog "Downloading WinGet..."
-        Start-BitsTransferWithRetry -Source "https://aka.ms/getwingetpreview" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+        Start-BitsTransferWithRetry -Source $wingetPreviewLink -Destination $wingetPackageDestination
         WriteLog "Installing WinGet..."
-        Add-AppxPackage -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+        Add-AppxPackage -Path $wingetPackageDestination
         WriteLog "Removing WinGet installer..."
-        Remove-Item -Path "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $wingetPackageDestination -Force -ErrorAction SilentlyContinue
     }
     $wingetSettingsFile = "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\settings.json"
-    $backupWingetSettingsFile = $wingetSettingsFile + ".bak"
-    if (-not (Test-Path -Path $backupWingetSettingsFile -PathType Leaf)) {
-        WriteLog "Backing up existing settings.json file"
-        Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force
+    $jsonContent = Get-Content -Path $wingetSettingsFile -Raw
+    # Check if storeDownload feature is already enabled
+    if ($jsonContent -notmatch '"storeDownload"\s*:\s*true') {
+        # Back up existing settings.json file
+        $backupWingetSettingsFile = $wingetSettingsFile + ".bak"
+        if (-not (Test-Path -Path $backupWingetSettingsFile -PathType Leaf)) {
+            WriteLog "Backing up existing settings.json file"
+            Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force | Out-Null
+        }
+        $wingetSettings = @(
+            '{'
+            '    "$schema": "https://aka.ms/winget-settings.schema.json",'
+            '    '
+            '    // For documentation on these settings, see: https://aka.ms/winget-settings'
+            '    "experimentalFeatures": {'
+            '        "storeDownload": true'
+            '    },'
+            '    "logging": {'
+            '        "level": "verbose"'
+            '    }'
+            '}'
+        )
+        $wingetSettingsContent = $wingetSettings -join "`n"
+        WriteLog "Creating settings.json file to allow the storeDownload feature."
+        $wingetSettingsContent | Out-File -FilePath $wingetSettingsFile -Encoding utf8 -Force
     }
-    $wingetSettings = @(
-        '{'
-        '    "$schema": "https://aka.ms/winget-settings.schema.json",'
-        '    '
-        '    // For documentation on these settings, see: https://aka.ms/winget-settings'
-        '    "experimentalFeatures": {'
-        '        "storeDownload": true'
-        '    },'
-        '    "logging": {'
-        '        "level": "verbose"'
-        '    }'
-        '}'
-    )
-    # Check to make sure there isn't already a setting.json file with the storeDownload feature enabled.
-    $wingetSettingsContent = $wingetSettings -join "`n"
-    WriteLog "Creating settings.json file to allow the storeDownload feature."
-    $wingetSettingsContent | Out-File -FilePath $wingetSettingsFile -Encoding utf8 -Force
 }
 
 function Get-Win32App {
@@ -1725,7 +1737,6 @@ function Get-Win32App {
         WriteLog "Skipping the download of $Win32App since it already exists in $AppsPath."
         return
     }
-    # New-Item -Path "$AppsPath\Win32" -Name $Win32App -ItemType Directory -Force
     New-Item -Path $appFolderPath -ItemType Directory -Force | Out-Null
     $appFolder = Split-Path -Path $appFolderPath -Leaf
     Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$Win32App"" --exact --download-directory ""$appFolderPath"" --scope machine --source winget"
@@ -1741,7 +1752,8 @@ function Get-Win32App {
     $installerFileExtension = [System.IO.Path]::GetExtension($installer)
     if ($installerFileExtension -eq ".exe") {
         $silentInstallCommand = "`"D:\win32\$appFolder\$installer`" $silentInstallSwitch"
-    } elseif ($installerFileExtension -eq ".msi") {
+    } 
+    elseif ($installerFileExtension -eq ".msi") {
         $silentInstallCommand = "msiexec /i `"D:\win32\$appFolder\$installer`" $silentInstallSwitch"
     }
     $cmdFile = "$AppsPath\InstallAppsandSysprep.cmd"
@@ -1764,15 +1776,14 @@ function Get-StoreApp {
         WriteLog "Skipping the download of $StoreApp since it already exists in $AppsPath."
         return
     }
-    # New-Item -Path "$AppsPath\MSStore" -Name $StoreApp -ItemType Directory -Force
     New-Item -Path $appFolderPath -ItemType Directory -Force | Out-Null
-    $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
-    $UpdatedcmdContent = $CmdContent -replace 'set "INSTALL_MSSTORE=false"', 'set "INSTALL_MSSTORE=true"'
-    Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
+    $cmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+    $updatedcmdContent = $cmdContent -replace 'set "INSTALL_MSSTORE=false"', 'set "INSTALL_MSSTORE=true"'
+    Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $updatedcmdContent
     # Invoke-Process is not used here because it terminates the script if the exit code of the process is not zero.
     # WinGet's download command will return a non-zero exit code when downloading store apps, as attempting to download the license file always appears to cause an error.
     Start-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$StoreApp"" --download-directory ""$appFolderPath"" --accept-package-agreements --accept-source-agreements --scope machine --source msstore" -Wait -NoNewWindow
-    $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
+    $packages = Get-ChildItem -Path "$appFolderPath\*" -Exclude "Dependencies\*" -File
     # WinGet downloads multiple versions of certain store apps. The latest version of the package will be determined based on the date of the file signature.
     $latestPackage = ""
     $latestDate = [datetime]::MinValue
@@ -1813,17 +1824,20 @@ function Get-Apps {
     $apps | ForEach-Object {
         if ($_ -like 'win32:*') {
             $win32Apps += $_.Substring(6)
-        } elseif ($_ -like 'store:*') {
+        } 
+        elseif ($_ -like 'store:*') {
             $storeApps += $_.Substring(6)
         }
     }
     $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $wingetInstalled) {
+        WriteLog "Downloading WinGet and its dependencies..."
         Install-WinGet -InstallWithDependencies $true
     }
     $wingetVersion = & winget.exe --version
     # Preview release is needed to enable storeDownload experimental feature
     if (-not ($wingetVersion -like "*preview*")) {
+        WriteLog "Downloading WinGet without dependencies..."
         Install-WinGet -InstallWithDependencies $false
     }
     $lineNumber = 13
@@ -3161,7 +3175,7 @@ if ($InstallApps) {
             exit
         }
         WriteLog "$AppsPath\InstallAppsandSysprep.cmd found"
-        Get-Apps -AppsList "$FFUDevelopmentPath\Apps\appslist.txt"
+        Get-Apps -AppsList "$AppsPath\AppsList.txt"
         
         if (-not $InstallOffice) {
             #Modify InstallAppsandSysprep.cmd to REM out the office install command
