@@ -1677,7 +1677,7 @@ function Install-WinGet {
         Remove-Item -Path "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx" -Force -ErrorAction SilentlyContinue
         Remove-Item -Path "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx" -Force -ErrorAction SilentlyContinue
     } else {
-        # If WinGet was already installed, then installing the dependencies can cause an error if the system has a newer version of the dependencies that are downloaded
+        # If WinGet was already installed, then installing the dependencies can cause an error if the system has a newer version of the dependencies than the ones downloaded.
         WriteLog "Downloading WinGet..."
         Start-BitsTransferWithRetry -Source "https://aka.ms/getwingetpreview" -Destination "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
         WriteLog "Installing WinGet..."
@@ -1704,6 +1704,7 @@ function Install-WinGet {
         '    }'
         '}'
     )
+    # Check to make sure there isn't already a setting.json file with the storeDownload feature enabled.
     $wingetSettingsContent = $wingetSettings -join "`n"
     WriteLog "Creating settings.json file to allow the storeDownload feature."
     $wingetSettingsContent | Out-File -FilePath $wingetSettingsFile -Encoding utf8 -Force
@@ -1725,7 +1726,7 @@ function Get-Win32App {
         return
     }
     # New-Item -Path "$AppsPath\Win32" -Name $Win32App -ItemType Directory -Force
-    New-Item -Path $appFolderPath -ItemType Directory -Force
+    New-Item -Path $appFolderPath -ItemType Directory -Force | Out-Null
     $appFolder = Split-Path -Path $appFolderPath -Leaf
     Invoke-Process -FilePath winget.exe -ArgumentList "download --name ""$Win32App"" --exact --download-directory ""$appFolderPath"" --scope machine --source winget"
     $installerPath = Get-ChildItem -Path "$appFolderPath\*" -Include *.exe, *.msi -File
@@ -1749,7 +1750,6 @@ function Get-Win32App {
     Set-Content -Path $cmdFile -Value $cmdContent
 }
 
-# Non-in-box apps that work - Power BI Desktop, Remote Desktop, Company Portal
 function Get-StoreApp {
     param (
         [string]$StoreApp
@@ -1765,16 +1765,17 @@ function Get-StoreApp {
         return
     }
     # New-Item -Path "$AppsPath\MSStore" -Name $StoreApp -ItemType Directory -Force
-    New-Item -Path $appFolderPath -ItemType Directory -Force
+    New-Item -Path $appFolderPath -ItemType Directory -Force | Out-Null
     $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     $UpdatedcmdContent = $CmdContent -replace 'set "INSTALL_MSSTORE=false"', 'set "INSTALL_MSSTORE=true"'
     Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
+    # Invoke-Process is not used here because it terminates the script if the exit code of the process is not zero.
+    # WinGet's download command will return a non-zero exit code when downloading store apps, as attempting to download the license file always appears to cause an error.
     Start-Process -FilePath winget.exe -ArgumentList "download --name --exact ""$StoreApp"" --download-directory ""$appFolderPath"" --accept-package-agreements --accept-source-agreements --scope machine --source msstore" -Wait -NoNewWindow
     $packages = Get-ChildItem -Path "$appFolderPath\*" -Include *.appxbundle, *.msixbundle -File
+    # WinGet downloads multiple versions of certain store apps. The latest version of the package will be determined based on the date of the file signature.
     $latestPackage = ""
     $latestDate = [datetime]::MinValue
-    # WinGet downloads multiple versions of a store app.
-    # Identifying the latest version of the package based on the date of the file signature.
     foreach ($package in $packages) {
         $signature = Get-AuthenticodeSignature -FilePath $package.FullName
         if ($signature.Status -eq 'Valid') {
@@ -1830,7 +1831,7 @@ function Get-Apps {
     $storeAppsFolder = Join-Path -Path $AppsPath -ChildPath "MSStore"
     if ($win32Apps) {
         if (-not (Test-Path -Path $win32Folder -PathType Container)) {
-            New-Item -Path $win32Folder -ItemType Directory -Force
+            New-Item -Path $win32Folder -ItemType Directory -Force | Out-Null
         }
         foreach ($win32App in $win32Apps) {
             try {
@@ -1846,7 +1847,7 @@ function Get-Apps {
     }
     if ($storeApps) {
         if (-not (Test-Path -Path $storeAppsFolder -PathType Container)) {
-            New-Item -Path $storeAppsFolder -ItemType Directory -Force
+            New-Item -Path $storeAppsFolder -ItemType Directory -Force | Out-Null
         }
         foreach ($storeApp in $storeApps) {
             try {
@@ -2992,8 +2993,14 @@ function Get-FFUEnvironment {
         Remove-Item -Path $EdgePath -Recurse -Force
         WriteLog 'Removal complete'
     }
-    Remove-Item -Path "$AppsPath\Win32" -Recurse -Force
-    Remove-Item -Path "$AppsPath\MSStore" -Recurse -Force
+    if (Test-Path -Path "$AppsPath\Win32" -PathType Container) {
+        WriteLog "Cleaning up Win32 folder"
+        Remove-Item -Path "$AppsPath\Win32" -Recurse -Force
+    }
+    if (Test-Path -Path "$AppsPath\MSStore" -PathType Container) {
+        WriteLog "Cleaning up MSStore folder"
+        Remove-Item -Path "$AppsPath\MSStore" -Recurse -Force
+    }
     Clear-InstallAppsandSysprep
     Writelog 'Removing dirty.txt file'
     Remove-Item -Path "$FFUDevelopmentPath\dirty.txt" -Force
@@ -3009,10 +3016,9 @@ function Clear-InstallAppsandSysprep {
     $cmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove win32 app install commands"
     $cmdContent -notmatch "D:\\win32*" | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+    $cmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     WriteLog "Setting MSStore installation condition to false"
-    $UpdatedcmdContent = $cmdContent -replace 'set "INSTALL_MSSTORE=true"', 'set "INSTALL_MSSTORE=false"'
-    Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $UpdatedcmdContent
-    $cmdContent
+    $cmdContent -replace 'set "INSTALL_MSSTORE=true"', 'set "INSTALL_MSSTORE=false"' | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     if ($UpdateLatestDefender) {
         WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove Defender Platform Update"
         $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
@@ -3559,9 +3565,14 @@ catch {
     throw $_
 }
 try {
-    WriteLog "Cleaning up Win32 and MSStore folders"
-    Remove-Item -Path "$AppsPath\Win32" -Recurse -Force
-    Remove-Item -Path "$AppsPath\MSStore" -Recurse -Force
+    if (Test-Path -Path "$AppsPath\Win32" -PathType Container) {
+        WriteLog "Cleaning up Win32 folder"
+        Remove-Item -Path "$AppsPath\Win32" -Recurse -Force
+    }
+    if (Test-Path -Path "$AppsPath\MSStore" -PathType Container) {
+        WriteLog "Cleaning up MSStore folder"
+        Remove-Item -Path "$AppsPath\MSStore" -Recurse -Force
+    }
 }
 catch {
     WriteLog "$_"
