@@ -17,9 +17,9 @@ for %%f in ("%anyconnectfolder%\*.msi") do (
 if defined anyconnectinstaller (
     msiexec /i %anyconnectinstaller% /qn /norestart
 )
-set "INSTALL_MSSTORE=false"
-if /i "%INSTALL_MSSTORE%"=="false" (
-    echo Skipping MS Store installation due to INSTALL_MSSTORE flag.
+set "INSTALL_STOREAPPS=false"
+if /i "%INSTALL_STOREAPPS%"=="false" (
+    echo Skipping MS Store installation due to INSTALL_STOREAPPS flag.
     goto :remaining
 )
 set "basepath=D:\MSStore"
