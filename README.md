@@ -1,14 +1,17 @@
 # Using Full Flash Update (FFU) files to speed up Windows deployment
 
-This repo contains the full FFU process that we use in US Education at Microsoft to help customers with large deployments of Windows as they prepare for the new school year. This process isn't limited to only large deployments at the start of the year, but is the most common.
+This repo is a fork of [rbalsleyMSFT](https://github.com/rbalsleymsft/FFU)'s FFU process that has been adapted for the University of Georgia's Windows deployments. FFUs are sector-based files that contain all the partitions of the drive that they are captured from. This is contrasted with WIM files, which is the traditional imaging format that is used with tools like Microsoft Deployment Toolkit, Configuration Manager, etc. WIMs only contain the files from the OS partition and they are also applied at the partition-level during deployment, whereas FFUs are applied at the drive-level upon deployment. The main advantage of imaging with FFU files is that the deployment speed is much faster compared to WIM deployments. This is significantly beneficial in mass deployment scenarios. For more information on these imaging formats, see [WIM vs. VHD vs. FFU: comparing imaging file formats](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/wim-vs-ffu-image-file-formats?view=windows-11).
 
-This process will copy Windows in about 2-3 minutes to the target device, optionally copy drivers, provisioning packages, Autopilot, etc. School technicians have even given the USB sticks to teachers and teachers calling them their "Magic USB sticks" to quickly get student devices reimaged in the event of an issue with their Windows PC.
+The goal of this project is to automate the process of building, capturing, and deploying a custom Windows image, as this can often be a time-consuming process to carry out manually. As images quickly become out-of-date, maintaining an image can become burdensome. Having an automated solution allows for any individual to quickly recreate an up-to-date image. To broadly summarize, running the project will download Windows media from Microsoft and applying it to a VHDX file and run it in a Hyper-V VM to install applications and apply customizations. Windows will then be sysprepped, and once the VM shuts down, the FFU will be captured from the VHDX. Optionally, the project can also prepare a deployment USB drive and copy the FFU, drivers, provisioning packages, Autopilot configuration files, and other necessary components. Once the USB drive is booted into on a target device, the FFU will be applied to the drive automatically.
 
-While we use this in Education at Microsoft, other industries can use it as well. We esepcially see a need for something like this with partners who do re-imaging on behalf of customers. The difference in Education is that they typically have large deployments that tend to happen at the beginning of the school year and any amount of time saved is helpful. Microsoft Deployment Toolkit, Configuration Manager, and other community solutions are all great solutions, but are typically slower due to WIM deployments being file-based while FFU files are sector-based.
+# Prerequisites
 
-# Updates
+Hyper-V must be enabled. To enable Hyper-V with PowerShell, open PowerShell as an administrator and run the following command:
+```ps1
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
+```
 
-2406.1 has been released! Check out the changes in the new [Change Log](ChangeLog.md)
+Once the command finishes running, restart the computer.
 
 # Getting Started
 
