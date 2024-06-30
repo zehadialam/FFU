@@ -1739,7 +1739,7 @@ function Get-Win32App {
         [string]$Win32App,
         [int]$LineNumber
     )
-    $wingetSearchResult = & winget.exe search --name "$Win32App" --exact --source winget
+    $wingetSearchResult = & winget.exe search --name "$Win32App" --exact --accept-source-agreements --source winget
     if ($wingetSearchResult -contains "No package found matching input criteria.") {
         WriteLog "$Win32App not found in WinGet repository. Skipping download."
         return
@@ -1783,7 +1783,7 @@ function Get-StoreApp {
     param (
         [string]$StoreApp
     )
-    $wingetSearchResult = & winget.exe search --name --exact "$StoreApp" --source msstore
+    $wingetSearchResult = & winget.exe search --name --exact "$StoreApp" --accept-source-agreements --source msstore
     if ($wingetSearchResult -contains "No package found matching input criteria.") {
         WriteLog "$StoreApp not found in WinGet repository. Skipping download."
         return
@@ -1792,7 +1792,7 @@ function Get-StoreApp {
     New-Item -Path $appFolderPath -ItemType Directory -Force | Out-Null
     # Invoke-Process is not used here because it terminates the script if the exit code of the process is not zero.
     # WinGet's download command will return a non-zero exit code when downloading store apps, as attempting to download the license file always appears to cause an error.
-    WriteLog "Downloading $StoreApp..."
+    WriteLog "Downloading $StoreApp and dependencies..."
     $wingetDownloadResult = & winget.exe download --name --exact "$StoreApp" --download-directory "$appFolderPath" --accept-package-agreements --accept-source-agreements --source msstore | Out-String
     # Many store apps can be found by winget search, but the download of the apps are unsupported.
     if ($wingetDownloadResult -match "No applicable Microsoft Store package download information found.") {
@@ -1806,7 +1806,7 @@ function Get-StoreApp {
         $updatedcmdContent = $cmdContent -replace 'set "INSTALL_STOREAPPS=false"', 'set "INSTALL_STOREAPPS=true"'
         Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $updatedcmdContent
     }
-    WriteLog "$StoreApp has completed downloading. Identifying the latest version of the $StoreApp."
+    WriteLog "$StoreApp has completed downloading. Identifying the latest version of $StoreApp."
     $packages = Get-ChildItem -Path "$appFolderPath\*" -Exclude "Dependencies\*" -File
     # WinGet downloads multiple versions of certain store apps. The latest version of the package will be determined based on the date of the file signature.
     $latestPackage = ""
