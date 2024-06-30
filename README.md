@@ -9,6 +9,22 @@ This repo is a fork of [rbalsleyMSFT](https://github.com/rbalsleymsft/FFU)'s FFU
 
 The goal of this project is to automate the process of building, capturing, and deploying a custom Windows image. As images quickly become out-of-date, maintaining an image can become burdensome. Having an automated solution allows for any individual to quickly recreate an up-to-date image. To broadly summarize, running the project will download Windows media from Microsoft, apply it to a VHDX file, and run it in a Hyper-V VM to install applications and apply customizations. Windows will then be sysprepped, and once the VM shuts down, the FFU will be captured from the VHDX. Optionally, the project can also prepare a deployment USB drive and copy the FFU, drivers, provisioning packages, Autopilot configuration files, and other necessary components. Once the USB drive is booted into on a target device, the FFU will be applied to the drive automatically.
 
+## Parent Project Contributions
+
+I remain an active contributor to the [parent project](https://github.com/rbalsleymsft/FFU). My contributions include the following feature additions:
+- Automated Windows ADK download and installation to eliminate a manual project prerequisite. [PR 14](https://github.com/rbalsleyMSFT/FFU/pull/14)
+- Automated the upgrade of an existing ADK installation to the latest version and added more robust handling of various ADK scenarios. [PR 18](https://github.com/rbalsleyMSFT/FFU/pull/18)
+- Added procedures and optimizations to reduce the size of the captured FFU. [PR 25](https://github.com/rbalsleyMSFT/FFU/pull/25)
+
+## Features Unique to This Fork
+This fork contains unique functionality that would detract from the generalized nature of the parent project. These include the following image customizations:
+- Removing various in-box Windows apps commonly regarded as "bloatware"
+- Applying a custom Windows theme and wallpaper
+- Applying a custom lock screen
+- Configuring the taskbar layout with pinned apps
+- Configuring the public desktop
+- Configuring various group policy settings that are desirable in enterprise & higher education environments
+
 ## Prerequisites
 
 Hyper-V must be enabled. To enable Hyper-V with PowerShell, open PowerShell as an administrator and run the following command:
