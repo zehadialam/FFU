@@ -1662,6 +1662,8 @@ function Install-WinGet {
     param (
         [bool]$InstallWithDependencies
     )
+    $wingetPreviewLink = "https://aka.ms/getwingetpreview"
+    $wingetPackageDestination = "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
     if ($InstallWithDependencies) {
         $dependencies = @(
             @{
@@ -1673,8 +1675,6 @@ function Install-WinGet {
                 Destination = "$env:TEMP\Microsoft.UI.Xaml.2.8.x64.appx"
             }
         )
-        $wingetPreviewLink = "https://aka.ms/getwingetpreview"
-        $wingetPackageDestination = "$env:TEMP\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
         Start-BitsTransferWithRetry -Source $wingetPreviewLink -Destination $wingetPackageDestination
         foreach ($dependency in $dependencies) {
             Start-BitsTransferWithRetry -Source $dependency.Source -Destination $dependency.Destination
@@ -1856,15 +1856,20 @@ function Get-Apps {
             $storeApps += $_.Substring(6)
         }
     }
-    $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
+    $wingetInstalled = Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe"
     if (-not $wingetInstalled) {
-        WriteLog "WinGet command is not on path. Downloading preview version of WinGet and its dependencies..."
+        WriteLog "WinGet is not installed. Downloading preview version of WinGet and its dependencies..."
         Install-WinGet -InstallWithDependencies $true
+    }
+    $wingetOnPath = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $wingetOnPath) {
+        WriteLog "WinGet is not on the path. Downloading preview version of WinGet without dependencies..."
+        Install-WinGet -InstallWithDependencies $false
     }
     $wingetVersion = & winget.exe --version
     # Preview release is needed to enable storeDownload experimental feature
     if (-not ($wingetVersion -like "*preview*")) {
-        WriteLog "WinGet is installed, but not the preview version. Downloading preview version of WinGet without dependencies..."
+        WriteLog "The preview version of WinGet is not installed. Downloading preview version of WinGet without dependencies..."
         Install-WinGet -InstallWithDependencies $false
     }
     $lineNumber = 13
