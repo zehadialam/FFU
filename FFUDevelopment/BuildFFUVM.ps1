@@ -1700,7 +1700,7 @@ function Install-WinGet {
         # Back up existing settings.json file
         $backupWingetSettingsFile = $wingetSettingsFile + ".bak"
         if (-not (Test-Path -Path $backupWingetSettingsFile -PathType Leaf)) {
-            WriteLog "Backing up existing settings.json file"
+            WriteLog "Backing up existing WinGet settings.json file to $backupWingetSettingsFile"
             Copy-Item -Path $wingetSettingsFile -Destination $backupWingetSettingsFile -Force | Out-Null
         }
         $wingetSettings = @(
@@ -1717,8 +1717,11 @@ function Install-WinGet {
             '}'
         )
         $wingetSettingsContent = $wingetSettings -join "`n"
-        WriteLog "Creating settings.json file to allow the storeDownload feature."
+        WriteLog "Creating WinGet settings.json file to allow the storeDownload feature. Writing file to $wingetSettingsFile"
         $wingetSettingsContent | Out-File -FilePath $wingetSettingsFile -Encoding utf8 -Force
+    }
+    else {
+        WriteLog "WinGet's settings.json file is already configured to enable the storeDownload feature."
     }
 }
 
@@ -1864,7 +1867,6 @@ function Get-Apps {
         }
         foreach ($win32App in $win32Apps) {
             try {
-                WriteLog "Getting $win32App app"
                 Get-Win32App -Win32App $win32App -LineNumber $lineNumber
                 $lineNumber++
             }
@@ -1880,8 +1882,7 @@ function Get-Apps {
         }
         foreach ($storeApp in $storeApps) {
             try {
-                WriteLog "Getting $storeApp app"
-                Get-StoreApp $storeApp
+                Get-StoreApp -StoreApp $storeApp
             }
             catch {
                 WriteLog "Error occurred while processing $storeApp : $_"
@@ -3047,7 +3048,7 @@ function Clear-InstallAppsandSysprep {
     $cmdContent -notmatch "D:\\win32*" | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     $cmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     WriteLog "Setting MSStore installation condition to false"
-    $cmdContent -replace 'set "INSTALL_MSSTORE=true"', 'set "INSTALL_MSSTORE=false"' | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
+    $cmdContent -replace 'set "INSTALL_STOREAPPS=true"', 'set "INSTALL_STOREAPPS=false"' | Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"
     if ($UpdateLatestDefender) {
         WriteLog "Updating $AppsPath\InstallAppsandSysprep.cmd to remove Defender Platform Update"
         $CmdContent = Get-Content -Path "$AppsPath\InstallAppsandSysprep.cmd"

@@ -41,7 +41,6 @@ for /d %%D in ("%basepath%\*") do (
             set "dism_command=!dism_command! /SkipLicense /Region:All"
             echo !dism_command!
             !dism_command!
-            echo Installation completed for package: !mainpackage!
         )
     )
 )
