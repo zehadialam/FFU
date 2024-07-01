@@ -1856,7 +1856,7 @@ function Get-Apps {
             $storeApps += $_.Substring(6)
         }
     }
-    $wingetInstalled = Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe"
+    $wingetInstalled = Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe" -ErrorAction SilentlyContinue
     if (-not $wingetInstalled) {
         WriteLog "WinGet is not installed. Downloading preview version of WinGet and its dependencies..."
         Install-WinGet -InstallWithDependencies $true
