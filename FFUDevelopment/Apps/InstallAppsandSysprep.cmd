@@ -7,6 +7,7 @@ REM Install Defender Definitions
 REM Install Windows Security Platform Update
 REM Install OneDrive Per Machine
 REM Install Edge Stable
+REM Winget Win32 Apps
 REM Add additional apps below here
 REM Contoso App (Example)
 REM msiexec /i d:\Contoso\setup.msi /qn /norestart
@@ -29,15 +30,18 @@ for /d %%D in ("%basepath%\*") do (
             ) 
         )
     )
-    for %%F in ("!appfolder!\*.xml") do (
-        set "licensefile=%%F"
-    )
+    @REM for %%F in ("!appfolder!\*.xml") do (
+    @REM     set "licensefile=%%F"
+    @REM )
     if defined mainpackage (
         set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:"!mainpackage!""
         if exist "!dependenciesfolder!" (
             for %%G in ("!dependenciesfolder!\*") do (
                 set "dism_command=!dism_command! /DependencyPackagePath:"%%G""
             )
+        )
+        for %%F in ("!appfolder!\*.xml") do (
+        set "licensefile=%%F"
         )
         if defined licensefile (
             set "dism_command=!dism_command! /LicensePath:"!licensefile!""
