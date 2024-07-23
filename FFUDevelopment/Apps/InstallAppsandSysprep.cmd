@@ -10,13 +10,6 @@ REM Install Edge Stable
 REM Add additional apps below here
 REM Contoso App (Example)
 REM msiexec /i d:\Contoso\setup.msi /qn /norestart
-set "anyconnectfolder=D:\Cisco-AnyConnect"
-for %%f in ("%anyconnectfolder%\*.msi") do (
-    set "anyconnectinstaller=%%f"
-)
-if defined anyconnectinstaller (
-    msiexec /i %anyconnectinstaller% /qn /norestart
-)
 set "INSTALL_STOREAPPS=false"
 if /i "%INSTALL_STOREAPPS%"=="false" (
     echo Skipping MS Store installation due to INSTALL_STOREAPPS flag.
@@ -29,24 +22,40 @@ for /d %%D in ("%basepath%\*") do (
     set "dependenciesfolder=!appfolder!\Dependencies"
     for %%F in ("!appfolder!\*") do (
         if not "%%~dpF"=="!dependenciesfolder!\" (
-            set "mainpackage=%%F"
+            if /i not "%%~xF"==".xml" (
+                if /i not "%%~xF"==".yaml" (
+                    set "mainpackage=%%F"
+                )
+            ) 
         )
     )
+    for %%F in ("!appfolder!\*.xml") do (
+        set "licensefile=%%F"
+    )
     if defined mainpackage (
+        set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:"!mainpackage!""
         if exist "!dependenciesfolder!" (
-            set "dism_command=DISM /Online /Add-ProvisionedAppxPackage /PackagePath:"!mainpackage!""
             for %%G in ("!dependenciesfolder!\*") do (
                 set "dism_command=!dism_command! /DependencyPackagePath:"%%G""
             )
-            set "dism_command=!dism_command! /SkipLicense /Region:All"
-            echo !dism_command!
-            !dism_command!
         )
+        if defined licensefile (
+            set "dism_command=!dism_command! /LicensePath:"!licensefile!""
+        ) else (
+            set "dism_command=!dism_command! /SkipLicense"
+        )
+        set "dism_command=!dism_command! /Region:All"
+        echo !dism_command!
+        !dism_command!
     )
 )
 :remaining
 endlocal
-powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\Set-ImageCustomizations.ps1
+for /r "D:\" %%G in (.) do (
+    if exist "%%G\Notepad++" (
+        powershell -Command "Remove-AppxPackage -Package NotepadPlusPlus_1.0.0.0_neutral__7njy0v32s6xk6"
+    )
+)
 REM The below lines will remove the unattend.xml that gets the machine into audit mode. If not removed, the OS will get stuck booting to audit mode each time.
 REM Also kills the sysprep process in order to automate sysprep generalize
 del c:\windows\panther\unattend\unattend.xml /F /Q
