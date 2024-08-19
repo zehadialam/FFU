@@ -63,7 +63,7 @@ function Set-RegistrySetting {
     if (-not (Test-Path -Path $RegPath)) {
         New-Item -Path $RegPath -Force
     }
-    New-ItemProperty -Path $RegPath -Name $RegValueName -PropertyType $RegValueType -Value $RegValueData
+    New-ItemProperty -Path $RegPath -Name $RegValueName -Value $RegValueData -PropertyType $RegValueType -Force
 }
 
 function Set-PolicySettings {
@@ -72,6 +72,8 @@ function Set-PolicySettings {
     Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Explorer" -RegValueName "LockedStartLayout" -RegValueType DWORD -RegValueData 1
     # Enable periodic registry backups
     Set-RegistrySetting -RegPath "HKLM:\System\CurrentControlSet\Control\Session Manager\Configuration Manager" -RegValueName "EnablePeriodicBackup" -RegValueType DWORD -RegValueData 1
+    # Enable long paths
+    Set-RegistrySetting -RegPath "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -RegValueName "LongPathsEnabled" -RegValueType DWORD -RegValueData 1
     # Configures the Chat icon on the taskbar
     Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Windows Chat" -RegValueName "ChatIcon" -RegValueType DWORD -RegValueData 3
     # Disable widgets
@@ -121,7 +123,7 @@ function Set-PublicDesktopContents {
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Firefox.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Zoom\Zoom Workplace.lnk"
+        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Zoom\Zoom Workplace.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Cisco\Cisco AnyConnect Secure Mobility Client\Cisco AnyConnect Secure Mobility Client.lnk"
     )
     foreach ($desktopApp in $publicDesktopApps) {
