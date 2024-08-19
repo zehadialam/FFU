@@ -55,7 +55,7 @@ Big thanks to [Zehadi Alam](https://github.com/zehadialam) for his contributions
 
 The way this works is if `-InstallApps $true`  and the FFUDevelopment\Apps\AppList.json file exists, whatever apps defined in that json file will be downloaded via Winget and will be installed in the FFU VM prior to capture. We've included two files: AppList_InboxAppsSample.json and AppList_Sample.json. The AppList_InboxAppsSample.json contains all of the apps that are installed in Windows by default and are searchable via `winget search AppID` . Some of these apps do not download and we're investigating why they come up via search, but fail to download. The AppList_Sample.json has Company Portal and New Teams.
 
-![1721678632154](image/ChangeLog/1721678632154.png)
+![1721678632154](Image/ChangeLog/1721678632154.png)
 
 In sticking with the idea of having the most up to date Windows build, inbox store/UWP apps are notoriously out of date and use a lot of bandwidth. By updating all of the UWP apps, bandwidth reductions of ~70% can be achieved.
 
@@ -68,7 +68,7 @@ Updated means latest .NET, Defender (definition and platform updates), Edge, One
 
 In order to get apps to help build your AppList.json file, just run `winget search "AppName"`
 
-![1721679421727](image/ChangeLog/1721679421727.png)
+![1721679421727](Image/ChangeLog/1721679421727.png)
 
 In this example we see that Firefox is published to both the msstore and winget sources. It's up to you which one you'd like to pick (I assume the msstore and the 128 version from the winget source are both the same version, but that may not be the case). You'll want to use the Name, ID, and Source values to help create your AppList.json file.
 
@@ -82,7 +82,7 @@ Other improvements
 
   The below screenshot should help in understanding what the SCSI config should look like.
 
-  ![1721681140638](image/ChangeLog/1721681140638.png)
+  ![1721681140638](Image/ChangeLog/1721681140638.png)
 * Cleaned up some old commented code from the ApplyFFU.ps1 file and other files.
 
 ## **2406.1**
@@ -93,7 +93,7 @@ For Dell, HP, and Lenovo, the script leverages a similar process to their corres
 
 The script supports lookups using the -model parameter. For example, if you want to download the drivers for a Surface Laptop Go 3, but don't know the exact model name, you could set -Make 'Microsoft' -Model 'Laptop Go' and it'll give you a list of Surface devices to pick from. If you know the exact name, it'll use that and not prompt.
 
-![FFU Build Command Line that includes -make 'Microsoft' and -model 'Laptop Go' demonstrating how to use the new parameters to download drivers](image/ChangeLog/image-1.png)
+![FFU Build Command Line that includes -make 'Microsoft' and -model 'Laptop Go' demonstrating how to use the new parameters to download drivers](Image/ChangeLog/image-1.png)
 
 The goal here is to make it easy to discover the drivers you want to download without having to know the exact model names.
 
@@ -130,7 +130,7 @@ The following command line says that we want to download the drivers for a Micro
 
 `.\BuildFFUVM.ps1 -make 'Microsoft' -model 'Laptop Go' -WindowsSKU 'Pro' -Installapps $true -InstallOffice $true -InstallDrivers $true -VMSwitchName 'external' -VMHostIPAddress '192.168.1.158' -CreateDeploymentMedia $true -BuildUSBDrive $true -UpdateLatestCU $true -UpdateLatestNet $true -UpdateLatestDefender $true -UpdateEdge $true -UpdateOneDrive $true -verbose -RemoveFFU $true -WindowsRelease 10`
 
-![Screenshot of the FFU script displaying a list of Surface models to download drivers for](image/ChangeLog/1718826099739.png)
+![Screenshot of the FFU script displaying a list of Surface models to download drivers for](Image/ChangeLog/1718826099739.png)
 
 If you want to build an FFU for Surface Laptop Go 3, enter 18 and it'll download the MSI and extract the drivers to the .\FFUDevelopment\Drivers\Microsoft\Surface Laptop Go 3 folder.
 
@@ -144,11 +144,11 @@ The following command line says that we want to download HP x360 drivers for Win
 
 `.\BuildFFUVM.ps1 -make 'HP' -model 'x360' -WindowsSKU 'Pro' -Installapps $true -InstallOffice $true -InstallDrivers $true -VMSwitchName 'external' -VMHostIPAddress '192.168.1.158' -CreateDeploymentMedia $true -CreateCaptureMedia $true -BuildUSBDrive $true -UpdateLatestCU $true -UpdateLatestNet $true -UpdateLatestDefender $true -UpdateEdge $true -UpdateOneDrive $true -RemoveFFU $true -WindowsRelease 10 -WindowsVersion '22h2' -Verbose`
 
-![Screenshot of the output of running the above command to download HP x360 drivers](image/ChangeLog/1718824392698.png)
+![Screenshot of the output of running the above command to download HP x360 drivers](Image/ChangeLog/1718824392698.png)
 
 HP has 40 models that contain the string x360 in the model name. I want to select the HP ProBook x360 11 G7 Education Edition Notebook PC which is number 25. The below screenshot shows the output of selecting the HP ProBook x360 11 G7 Education Edition Notebook PC
 
-![Screenshot of the script downloading drivers for an HP ProBook x360 11 G7 Education Edition Notebook PC](image/ChangeLog/1718824500798.png)
+![Screenshot of the script downloading drivers for an HP ProBook x360 11 G7 Education Edition Notebook PC](Image/ChangeLog/1718824500798.png)
 
 If you were to enter the exact model name (e.g. -model 'HP ProBook x360 11 G7 Education Edition Notebook PC'), the script wouldn't prompt you to select from a list of models.
 
@@ -164,11 +164,11 @@ The following command line says that we want to download Lenovo 500w drivers for
 
 The script will go out to the [Lenovo PSREF](https://psref.lenovo.com/search) page to figure out the Machine Type value and if multiple Machine Types are found (there are usually multiples found for different configuration types).
 
-![A screenshot of the different models and their machine types found from the Lenovo PSREF page and a selection prompt for the end user to pick which machine type they wish to use](image/ChangeLog/1718824806444.png)
+![A screenshot of the different models and their machine types found from the Lenovo PSREF page and a selection prompt for the end user to pick which machine type they wish to use](Image/ChangeLog/1718824806444.png)
 
 The Machine Type is the value in parenthesis. On the bottom of my device, the MTM value is MTM:**82VR**ZAKXXX. I would want to pick number 4 from the list since it includes (82VR). The below screenshot shows the script downloading the appropriate drivers for a Lenovo 500w.
 
-![The output of the script downloading Lenovo drivers](image/ChangeLog/1718824932640.png)
+![The output of the script downloading Lenovo drivers](Image/ChangeLog/1718824932640.png)
 
 If you use the Machine Type value for the -Model parameter (e.g. -model '82VR') the script will automatically download the drivers without prompting you to select the model.
 
@@ -188,7 +188,7 @@ The script will find every driver that is tagged with 3190 and download the late
 
 Below is a screenshot of what the verbose output of the script looks like when downloading the drivers for a Dell 3190.
 
-![a screenshot of what the verbose output of the script looks like when downloading the drivers for a Dell 3190](image/ChangeLog/1718825319847.png)
+![a screenshot of what the verbose output of the script looks like when downloading the drivers for a Dell 3190](Image/ChangeLog/1718825319847.png)
 
 * Added -Headers \$Headers -UserAgent \$UserAgent to most Invoke-Webrequest or Invoke-RestMethod commands to solve for intermittent download failures when downloading drivers or Office
 * Fixed some minor logging issues

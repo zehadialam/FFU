@@ -1,113 +1,42 @@
 # Using Full Flash Update (FFU) files to speed up Windows deployment
+<p align="center">
+  <img src="Image/Media/windows.png"/>
+  <img src="Image/Media/powershell.png"/>
+  <img src="Image/Media/hyper-v.png"/>
+</p>
 
-What if you could have a Windows image that has:
+This repo is a fork of [rbalsleyMSFT](https://github.com/rbalsleymsft/FFU)'s FFU process that has been adapted for Windows deployments at the University of Georgia. [FFU](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/deploy-windows-using-full-flash-update--ffu?view=windows-11) is a sector-based imaging format that contains all the partitions of the drive that it is captured from. This can be contrasted with WIM, which is the [traditional imaging format](https://www.microsoft.com/en-us/download/details.aspx?id=13096) that is used with tools like Microsoft Deployment Toolkit, Configuration Manager, etc. A [WIM](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/capture-and-apply-windows-using-a-single-wim?view=windows-11) is a file-based imaging format that only contains the files from a single partition. WIMs are applied at the partition-level during deployment, whereas FFUs are applied at the drive-level. The main advantage of imaging with FFU files is that the deployment speed is much faster compared to WIM deployments due to being sector-based. This is significantly beneficial in mass deployment scenarios. For more information on these imaging formats, see [WIM vs. VHD vs. FFU: comparing imaging file formats](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/wim-vs-ffu-image-file-formats?view=windows-11).
 
-- The latest Windows cumulative update
-- The latest .NET cumulative update
-- The latest Windows Defender Platform and Definition Updates
-- The latest version of Microsoft Edge
-- The latest version of OneDrive (Per-Machine)
-- The latest version of Microsoft 365 Apps/Office
-- The latest drivers from any of the major OEMs (Dell, HP, Lenovo, Microsoft) (yes, the latest, not some out of date enterprise CAB file from years ago)
-- Winget support so you can integrate any app available from Winget directly in your image
-- ARM64 support for the latest Copilot+ PCs
-- The ability to bring your own drivers and apps if necessary
-- Custom WinRE support
+The goal of this project is to provide a comprehensive Windows deployment solution using modern methods. This includes automating the process of building, capturing, and deploying a custom Windows image. As images quickly become out-of-date, maintaining or recreating them can become burdensome. Having an automated solution allows for any individual to quickly rebuild an up-to-date image. To broadly summarize, running the project will download Windows media from Microsoft, apply it to a VHDX file, and run it in a Hyper-V VM to install applications and apply customizations. Windows will then be [sysprepped](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/sysprep--generalize--a-windows-installation?view=windows-11), and once the VM shuts down, the FFU will be captured from the VHDX. The project can optionally prepare a deployment USB drive and copy the FFU, drivers, [provisioning packages](https://learn.microsoft.com/en-us/windows/configuration/provisioning-packages/provisioning-create-package), [Autopilot configuration files](https://learn.microsoft.com/en-us/autopilot/existing-devices), and other necessary components. Once the USB drive is booted into on a target device, the FFU will be applied to the drive automatically.
 
-And the best part: it takes less than two minutes to apply the image, even with all of these updates added to the media. After setting Windows up and going through Autopilot or a provisioning package, total elapsed time ~10 minutes (depending on what Intune or your device management tool is deploying).
+## Parent Project Contributions
+I am a contributor to the [parent project](https://github.com/rbalsleymsft/FFU). My contributions include the following feature additions:
+- Automated the download and installation of the Windows ADK to eliminate a manual project prerequisite. [PR 14](https://github.com/rbalsleyMSFT/FFU/pull/14)
+- Automated the upgrade of an existing ADK installation to the latest version and added more robust handling of various ADK scenarios. [PR 18](https://github.com/rbalsleyMSFT/FFU/pull/18)
+- Added procedures and optimizations to reduce the size of the captured FFU. [PR 25](https://github.com/rbalsleyMSFT/FFU/pull/25)
 
-The Full-Flash update (FFU) process can automatically download the latest release of Windows 11, the updates mentioned above, and creates a USB drive that can be used to quickly reimage a machine.
+All contributions to the parent project are included in this fork. This repo also remains in sync with the latest updates from the parent project.
 
-# Updates
+## Features Unique to This Fork
+This fork contains unique functionality that would detract from either the goals or the generalized nature of the parent project. These include the following image customizations:
+- Removing various in-box Windows apps commonly regarded as "bloatware"
+- Applying a custom Windows theme and wallpaper
+- Applying a custom lock screen
+- Configuring the taskbar layout with pinned apps
+- Configuring the public desktop
+- Configuring various group policy settings that are desirable in enterprise/education environments
 
-2408.1 has been released! Check out the changes in the [Change Log](ChangeLog.md)
+## Prerequisites
 
-# Getting Started
+Hyper-V must be enabled. To enable Hyper-V with PowerShell, open PowerShell as an administrator and run the following command:
+```ps1
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
+```
+
+Once the command finishes running, restart the computer.
+
+## Getting Started
 
 - Download the latest [release](https://github.com/rbalsleyMSFT/FFU/releases)
 - Extract the FFUDevelopment folder from the ZIP file (recommend to C:\FFUDevelopment)
 - Follow the doc: C:\FFUDevelopment\Docs\BuildDeployFFU.docx
-
-## YouTube Detailed Walkthrough
-
-The first 15 minutes of the following video includes a quick start demo to get started. Below the video are a list of chapters. This video was taken with the 2407.2 build. Features released after that will not be demonstrated in the video.
-
-[![Reimage Windows Fast with Full-Flash Update (FFU))](https://img.youtube.com/vi/rqXRbgeeKSQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=rqXRbgeeKSQ "Reimage Windows Fast with Full-Flash Update (FFU))")
-
-Chapters:
-
-[00:00](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=0s) Begin
-
-[03:21](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=201s) Quick Start Prereqs
-
-[07:19](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=439s) Quick Start Demo
-
-[14:12](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=852s) Script Parameters
-
-[17:22](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=1042s) Obtaining Windows Media
-
-[25:55](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=1555s) Adding Applications
-
-[26:59](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=1619s) Adding M365 Apps/Office
-
-[29:21](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=1761s) Adding Applications via Winget
-
-[34:59](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=2099s) Bring your own Applications
-
-[36:01](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=2161s) Customizing InstallAppsAndSysprep.cmd
-
-[38:34](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=2314s) Demo - Application Configuration
-
-[49:43](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=2983s) Drivers
-
-[55:39](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3339s) Automatically downloading drivers
-
-[57:28](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3448s) Microsoft Surface drivers
-
-[58:55](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3535s) Dell drivers
-
-[01:01:45](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3705s) Lenovo drivers
-
-[01:03:16](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3796s) HP drivers
-
-[01:05:25](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3925s) Bring your own drivers
-
-[01:06:24](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=3984s) Demo - Drivers
-
-[01:11:55](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=4315s) Multi-model driver support
-
-[01:13:21](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=4401s) Device naming
-
-[01:18:30](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=4710s) Device enrollment
-
-[01:21:43](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=4903s) Autopilot
-
-[01:24:57](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5097s) Provisioning packages
-
-[01:26:54](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5214s) Custom WinRE
-
-[01:29:59](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5399s) Demo - Putting it all together (Deep dive)
-
-[01:32:06](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5526s) Downloading Lenovo 500w drivers
-
-[01:33:28](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5608s) Downloading apps via Winget
-
-[01:36:54](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5814s) Downloading Office, Defender, Edge, OneDrive
-
-[01:38:15](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5895s) Building the Apps.iso
-
-[01:39:08](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=5948s) Applying Windows to the VHDX
-
-[01:40:16](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=6016s) Downloading and applying cumulative updates
-
-[01:41:44](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=6104s) Building the VM
-
-[01:48:13](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=6493s) Capturing the FFU
-
-[01:53:38](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=6818s) Creating USB drive
-
-[01:58:41](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=7121s) Deploying FFU
-
-[02:11:48](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=7908s) Troubleshooting
-
-[02:14:30](https://www.youtube.com/watch?v=rqXRbgeeKSQ&t=8070s) EDU Endpoint Office Hours

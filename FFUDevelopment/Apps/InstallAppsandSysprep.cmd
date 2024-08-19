@@ -60,6 +60,7 @@ for /r "D:\" %%G in (.) do (
         powershell -Command "Remove-AppxPackage -Package NotepadPlusPlus_1.0.0.0_neutral__7njy0v32s6xk6"
     )
 )
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\Customizations\Set-ImageCustomizations.ps1
 REM The below lines will remove the unattend.xml that gets the machine into audit mode. If not removed, the OS will get stuck booting to audit mode each time.
 REM Also kills the sysprep process in order to automate sysprep generalize
 del c:\windows\panther\unattend\unattend.xml /F /Q
@@ -83,5 +84,6 @@ for /f "tokens=*" %%K in ('reg query "%rootkey%"') do (
         reg delete "%%K" /v StateFlags0000 /f
     )
 )
+powershell -Command "Get-EventLog -List | ForEach-Object { Clear-EventLog $_.Log }"
 REM Sysprep/Generalize
 c:\windows\system32\sysprep\sysprep.exe /quiet /generalize /oobe
