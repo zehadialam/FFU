@@ -735,6 +735,7 @@ if (Test-Path -Path (Join-Path -Path $USBDrive -ChildPath "Autopilot.exe") -Path
     New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
     Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 }
+# powershell -command { Start-Process -FilePath "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File ""C:\Autopilot\Register-Autopilot.ps1""" -WindowStyle Hidden }
 #Copy DISM log to USBDrive
 WriteLog "Copying dism log to $USBDrive"
 invoke-process xcopy "X:\Windows\logs\dism\dism.log $USBDrive /Y" 

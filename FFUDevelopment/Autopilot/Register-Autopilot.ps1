@@ -2,6 +2,8 @@ param (
     [string]$GroupTag
 )
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction Ignore)) {
     Write-Host "Installing NuGet..." -ForegroundColor Green
     Install-PackageProvider -Name NuGet -Force -Confirm:$false
@@ -16,27 +18,42 @@ if (-not (Get-Module -ListAvailable -Name WindowsAutopilotIntune -ErrorAction Ig
 Connect-MgGraph -NoWelcome
 
 $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+Write-Host "Querying device with Autopilot..." -ForegroundColor Yellow
 $autopilotDevice = Get-AutopilotDevice -Serial $serialNumber
 
 if (-not $autopilotDevice) {
-    Write-Host "Registering device with Autopilot with the group tag $GroupTag..."
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag..." -ForegroundColor Yellow
     Install-Script -Name Get-WindowsAutopilotInfo -Force
     Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag
 }
 
 if ($autopilotDevice -and -not $autopilotDevice.GroupTag) {
     Write-Warning "Device is registered with Autopilot, but no group tag is set"
-    Write-Host "Assigning the group tag $GroupTag to the device..."
+    Write-Host "Assigning the group tag $GroupTag to the device..." -ForegroundColor Yellow
     Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
-} 
+}
 
-do {
-    $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
-    if ($profileAssigned -eq "notAssigned") {
-        Write-Host "Waiting for Autopilot profile to be assigned..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 5
-    }
-} while ($profileAssigned -eq "notAssigned")
+$waitForAutopilotProfile = Read-Host "Do you want to wait for the Autopilot profile to be assigned? This can take several minutes. [Y]es or [N]o"
 
-# Restart-Computer -Force
+if ($waitForAutopilotProfile.ToUpperInvariant() -eq 'Y') {
+    do {
+        $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
+        if ($profileAssigned -notlike "assigned*") {
+            Write-Host "Waiting for Autopilot profile to be assigned..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 30
+        } else {
+            Write-Host "Autopilot profile is assigned." -ForegroundColor Green
+        }
+    } while ($profileAssigned -notlike "assigned*")
+}
+
+$taskName = "CleanupandRestart"
+$command = @"
+Remove-Item -Path 'C:\Autopilot' -Recurse -Force
+schtasks /Delete /TN '$taskName' /F
+shutdown /r /t 3
+"@
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"$command`""
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(3)
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
