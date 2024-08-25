@@ -7,6 +7,6 @@ WinWait "Microsoft account"
 WinWait "Administrator: C:\Windows\system32\cmd.exe"
     WinActivate
 
-Send "powershell -ExecutionPolicy Bypass -File C:\Autopilot\Register-Autopilot.ps1 -GroupTag CAESATH{Enter}"
+Send "powershell -ExecutionPolicy Bypass -File C:\Autopilot\Register-Autopilot.ps1{Enter}"
 
 ExitApp

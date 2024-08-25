@@ -254,6 +254,8 @@ function Save-DriverPack {
         return
     }
     try {
+        Write-Host "`nImporting OSD module..." -ForegroundColor Green
+        Import-Module OSD -ErrorAction SilentlyContinue
         Write-Host "Retrieving latest $Manufacturer driver pack catalog...`n" -ForegroundColor Green
         $manufacturerMap[$Manufacturer].UpdateCatalogCommand.Invoke()
         $driverPackResult = $manufacturerMap[$Manufacturer].GetDriverPackCommand.Invoke()
@@ -317,8 +319,6 @@ function Get-DownloadedDrivers {
             Start-Sleep -Seconds 5
         }
     } while (-not $connection)
-    Write-Host "`nImporting OSD module..." -ForegroundColor Green
-    Import-Module OSD -ErrorAction SilentlyContinue
     $driverPath = Save-DriverPack -Manufacturer $ComputerManufacturer -Model $Model
     return $driverPath
 }
@@ -330,16 +330,24 @@ function Install-Drivers {
         [string]$MountPath
     )
     try {
-        $driverPath = Get-LocalDrivers -Model $model
-        if (-not $driverPath) {
-            $driverPath = Get-DownloadedDrivers -ComputerManufacturer $ComputerManufacturer -Model $model
+        #Some drivers can sometimes fail to copy and dism ends up with a non-zero error code. Invoke-process will throw and terminate in these instances. 
+        if (Test-Path -Path $Drivers -PathType Container) {
+            WriteLog 'Copying drivers'
+            Write-Warning 'Copying Drivers - dism will pop a window with no progress. This can take a few minutes to complete. This is done so drivers are logged to the scriptlog.txt file. Please be patient.'
+            Invoke-process dism.exe "/image:W:\ /Add-Driver /Driver:""$Drivers"" /Recurse"
+            WriteLog 'Copying drivers succeeded'
+        } else {
+            $driverPath = Get-LocalDrivers -Model $model
+            if (-not $driverPath) {
+                $driverPath = Get-DownloadedDrivers -ComputerManufacturer $ComputerManufacturer -Model $model
+            }
+            if (-not $driverPath) {
+                Write-Warning "Cannot find drivers for the $model model. The imaging process will continue without driver installation at this stage."
+                return
+            }
+            Write-Host "`nInstalling drivers for $model..." -ForegroundColor Green
+            Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$driverPath""", "/Recurse" -Wait -NoNewWindow
         }
-        if (-not $driverPath) {
-            Write-Warning "Cannot find drivers for the $model model. The imaging process will continue without driver installation at this stage."
-            return
-        }
-        Write-Host "`nInstalling drivers for $model..." -ForegroundColor Green
-        Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$driverPath""", "/Recurse" -Wait -NoNewWindow
     } catch {
         throw $_
     } finally {
@@ -364,6 +372,7 @@ WriteLog "Physical BytesPerSector is $BytesPerSector"
 WriteLog "Physical DeviceID is $PhysicalDeviceID"
 #Parse DiskID Number
 $DiskID = $PhysicalDeviceID.substring($PhysicalDeviceID.length - 1,1)
+$SetupCompleteData = ""
 WriteLog "DiskID is $DiskID"
 #Find FFU Files
 [array]$FFUFiles = @(Get-ChildItem -Path $USBDrive*.ffu)
@@ -434,14 +443,61 @@ If (Test-Path -Path $UnattendPrefixPath){
     }
 }
 #Ask for device name if unattend exists
-if ($Unattend -and $UnattendPrefix){
-    Writelog 'Unattend file found with prefixes.txt. Getting prefixes.'
-    $deploymentType = Read-Host 'Is this a shared device? [Y]es or [N]o'
+if ($Unattend -and $UnattendPrefix) {
+    $deployVolume = (Get-Volume | Where-Object { $_.FileSystemLabel -eq 'Deploy' }).DriveLetter + ":"
+    $registerAutopilotPath = (Get-ChildItem -Path (Convert-Path $deployVolume) -Filter "Register-Autopilot.ps1" -Recurse -ErrorAction SilentlyContinue).FullName
+    $autopilotContent = Get-Content -Path $registerAutopilotPath
+    WriteLog 'Unattend file found with prefixes.txt. Getting prefixes.'
+    $selection = @"
+Please select the deployment team:
+====================================
+[1] Service Desk
+[2] Field Services
+====================================
+"@
+    do {
+        Write-Host $selection
+        $choice = Read-Host 'Enter the number corresponding to your choice'
+        $deploymentTeam = switch ($choice) {
+            '1' { "Service Desk"; break }
+            '2' { "Field Services"; break }
+            default {
+                Write-Host "Invalid selection. Please enter 1 or 2." -ForegroundColor Red
+                $null
+            }
+        }
+    } until ($deploymentTeam)
+    do {
+        $deploymentType = Read-Host 'Is this a shared device? [Y]es or [N]o'
+    } until ($deploymentType -match '^[YyNn]$')
+    if ($deploymentTeam -eq "Field Services") {
+        do {
+            $localAccount = Read-Host 'Do you want to create a local account? [Y]es or [N]o'
+        } until ($localAccount -match '^[YyNn]$')
+        if ($localAccount.ToUpperInvariant() -eq 'Y') {
+            $username = Read-Host 'Type in the username'
+            $password = Read-Host 'Type in the password'
+            $SetupCompleteData += "`nnet user $username $password /add && net localgroup Administrators $username /add"
+        }
+    }
     if ($deploymentType.ToUpperInvariant() -eq 'Y') {
+        $groupTag = "CAESATH-SHARED"
+    } else {
+        if ($deploymentTeam -eq "Service Desk") {
+            $groupTag = "CAESATH"
+        }
+        if ($deploymentTeam -eq "Field Services") {
+            $groupTag = "CAESFLD"
+            $autopilotContent = $autopilotContent -replace '\[bool\]\$Expedited = \$false', "[bool]`$Expedited = `$true"
+        }
+    }
+    $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
+    if ($deploymentType.ToUpperInvariant() -eq 'Y' -or $deploymentTeam -eq "Field Services") {
         $autopilot = $false
         $computerName = Read-Host 'Type in the name of the computer'
         $computerName = $computerName -replace "\s",""
         if ($computerName.Length -gt 15) {
+            $SetupCompleteData += "`nreg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v ""NV Hostname"" /t REG_SZ /d ""$computerName"" /f"
             $computerName = $computerName.substring(0, 15)
         }
         $computerName = Set-Computername($computername)
@@ -480,7 +536,8 @@ if ($Unattend -and $UnattendPrefix){
         $computername = ($PrefixToUse + $serial) -replace "\s","" # Remove spaces because windows does not support spaces in the computer names
         #If computername is longer than 15 characters, reduce to 15. Sysprep/unattend doesn't like ComputerName being longer than 15 characters even though Windows accepts it
         if ($computername.Length -gt 15) {
-           $computername = $computername.substring(0,15)
+            $SetupCompleteData += "`nreg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v ""NV Hostname"" /t REG_SZ /d ""$computerName"" /f"
+            $computername = $computername.substring(0,15)
         }
         $computername = Set-Computername($computername)
         Writelog "Computer name set to $computername"
@@ -720,18 +777,11 @@ if ($computername) {
 }
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
-#Some drivers can sometimes fail to copy and dism ends up with a non-zero error code. Invoke-process will throw and terminate in these instances. 
-if (Test-Path -Path $Drivers) {
-    WriteLog 'Copying drivers'
-    Write-Warning 'Copying Drivers - dism will pop a window with no progress. This can take a few minutes to complete. This is done so drivers are logged to the scriptlog.txt file. Please be patient.'
-    Invoke-process dism.exe "/image:W:\ /Add-Driver /Driver:""$Drivers"" /Recurse"
-    WriteLog 'Copying drivers succeeded'
-}
 if (Test-Path -Path (Join-Path -Path $USBDrive -ChildPath "Autopilot.exe") -PathType Leaf) {
     New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
     Copy-Item -Path (Join-Path -Path $USBDrive -ChildPath "Autopilot.exe") -Destination "W:\Autopilot"
-    Copy-Item -Path (Join-Path -Path $USBDrive -ChildPath "Register-Autopilot.ps1") -Destination "W:\Autopilot"
-    $SetupCompleteData = "powershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
+    $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
+    $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
     New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
     Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 }

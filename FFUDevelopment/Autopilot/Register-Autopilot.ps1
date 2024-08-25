@@ -1,45 +1,47 @@
 param (
-    [string]$GroupTag
+    [string]$GroupTag,
+    [bool]$Expedited = $false
 )
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction Ignore)) {
     Write-Host "Installing NuGet..." -ForegroundColor Green
-    Install-PackageProvider -Name NuGet -Force -Confirm:$false
+    Install-PackageProvider -Name NuGet -Force -Confirm:$false | Out-Null
+    Write-Host "NuGet is installed." -ForegroundColor Green
 }
 
 if (-not (Get-Module -ListAvailable -Name WindowsAutopilotIntune -ErrorAction Ignore)) {
-    Write-Host "Installing WindowsAutopilotIntune module..." -ForegroundColor Green
+    Write-Host "`nInstalling WindowsAutopilotIntune module..." -ForegroundColor Green
     Install-Module -Name WindowsAutopilotIntune -Force -Confirm:$false
+    Write-Host "WindowsAutopilotIntune module is installed." -ForegroundColor Green
+    Write-Host "Importing WindowsAutopilotIntune module..." -ForegroundColor Green
     Import-Module WindowsAutopilotIntune
 }
 
 Connect-MgGraph -NoWelcome
 
 $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
-Write-Host "Querying device with Autopilot..." -ForegroundColor Yellow
+Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
 $autopilotDevice = Get-AutopilotDevice -Serial $serialNumber
 
 if (-not $autopilotDevice) {
-    Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag..." -ForegroundColor Yellow
+    Write-Host "`nDevice is not registered with Autopilot. Registering device with the group tag $GroupTag..." -ForegroundColor Yellow
     Install-Script -Name Get-WindowsAutopilotInfo -Force
     Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag
 }
 
 if ($autopilotDevice -and -not $autopilotDevice.GroupTag) {
-    Write-Warning "Device is registered with Autopilot, but no group tag is set"
-    Write-Host "Assigning the group tag $GroupTag to the device..." -ForegroundColor Yellow
+    Write-Host "`nDevice is registered with Autopilot, but no group tag is set" -ForegroundColor Yellow
+    Write-Host "Assigning the group tag $GroupTag to the device...`n" -ForegroundColor Yellow
     Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
 }
 
-$waitForAutopilotProfile = Read-Host "Do you want to wait for the Autopilot profile to be assigned? This can take several minutes. [Y]es or [N]o"
-
-if ($waitForAutopilotProfile.ToUpperInvariant() -eq 'Y') {
+if (-not $Expedited) {
     do {
         $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
         if ($profileAssigned -notlike "assigned*") {
-            Write-Host "Waiting for Autopilot profile to be assigned..." -ForegroundColor Yellow
+            Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssigned" -ForegroundColor Yellow
             Start-Sleep -Seconds 30
         } else {
             Write-Host "Autopilot profile is assigned." -ForegroundColor Green
