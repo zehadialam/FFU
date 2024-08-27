@@ -19,6 +19,10 @@ if (-not (Get-Module -ListAvailable -Name WindowsAutopilotIntune -ErrorAction Ig
     Import-Module WindowsAutopilotIntune
 }
 
+do {
+    $prompt = Read-Host "Press Enter to continue"
+} while ($prompt -ne "")
+
 Connect-MgGraph -NoWelcome
 
 $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
@@ -26,9 +30,10 @@ Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
 $autopilotDevice = Get-AutopilotDevice -Serial $serialNumber
 
 if (-not $autopilotDevice) {
-    Write-Host "`nDevice is not registered with Autopilot. Registering device with the group tag $GroupTag..." -ForegroundColor Yellow
+    Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag...`n" -ForegroundColor Yellow
     Install-Script -Name Get-WindowsAutopilotInfo -Force
     Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag
+    Write-Host "`n"
 }
 
 if ($autopilotDevice -and -not $autopilotDevice.GroupTag) {
@@ -39,7 +44,7 @@ if ($autopilotDevice -and -not $autopilotDevice.GroupTag) {
 
 if (-not $Expedited) {
     do {
-        $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
+        $profileAssigned = $autopilotDevice.DeploymentProfileAssignmentStatus
         if ($profileAssigned -notlike "assigned*") {
             Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssigned" -ForegroundColor Yellow
             Start-Sleep -Seconds 30
@@ -49,9 +54,13 @@ if (-not $Expedited) {
     } while ($profileAssigned -notlike "assigned*")
 }
 
+Uninstall-Script -Name Get-WindowsAutopilotInfo -Force -Confirm:$false
+Uninstall-Module -Name WindowsAutopilotIntune -Force -Confirm:$false
+
 $taskName = "CleanupandRestart"
 $command = @"
 Remove-Item -Path 'C:\Autopilot' -Recurse -Force
+Remove-Item -Path 'C:\Windows\Setup\Scripts' -Recurse -Force
 schtasks /Delete /TN '$taskName' /F
 shutdown /r /t 3
 "@

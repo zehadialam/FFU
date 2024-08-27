@@ -360,8 +360,10 @@ function Install-Drivers {
 #Get USB Drive and create log file
 $LogFileName = 'ScriptLog.txt'
 $USBDrive = Get-USBDrive
-New-item -Path $USBDrive -Name $LogFileName -ItemType "file" -Force | Out-Null
-$LogFile = $USBDrive + $LogFilename
+$LogFileDir = Join-Path -Path $USBDrive -ChildPath "logs"
+New-Item -Path $LogFileDir -ItemType Directory -Force | Out-Null
+New-item -Path $LogFileDir -Name $LogFileName -ItemType "file" -Force | Out-Null
+$LogFile = Join-Path -Path $LogFileDir -ChildPath $LogFilename
 $version = '2408.1'
 WriteLog 'Begin Logging'
 WriteLog "Script version: $version"
@@ -410,7 +412,7 @@ if ($FFUCount -gt 1) {
 }
 #FindAP
 $APFolder = $USBDrive + "Autopilot\"
-If (Test-Path -Path $APFolder){
+If (Test-Path -Path $APFolder) {
     [array]$APFiles = @(Get-ChildItem -Path $APFolder*.json)
     $APFilesCount = $APFiles.Count
     if ($APFilesCount -ge 1) {
@@ -419,7 +421,7 @@ If (Test-Path -Path $APFolder){
 }
 #FindPPKG
 $PPKGFolder = $USBDrive + "PPKG\"
-if (Test-Path -Path $PPKGFolder){
+if (Test-Path -Path $PPKGFolder) {
     [array]$PPKGFiles = @(Get-ChildItem -Path $PPKGFolder*.ppkg)
     $PPKGFilesCount = $PPKGFiles.Count
     if ($PPKGFilesCount -ge 1){
@@ -430,13 +432,13 @@ if (Test-Path -Path $PPKGFolder){
 $UnattendFolder = $USBDrive + "unattend\"
 $UnattendFilePath = $UnattendFolder + "unattend.xml"
 $UnattendPrefixPath = $UnattendFolder + "prefixes.txt"
-If (Test-Path -Path $UnattendFilePath){
+If (Test-Path -Path $UnattendFilePath) {
     $UnattendFile = Get-ChildItem -Path $UnattendFilePath
     If ($UnattendFile){
         $Unattend = $true
     }
 }
-If (Test-Path -Path $UnattendPrefixPath){
+If (Test-Path -Path $UnattendPrefixPath) {
     $UnattendPrefixFile = Get-ChildItem -Path $UnattendPrefixPath
     If ($UnattendPrefixFile){
         $UnattendPrefix = $true
@@ -444,8 +446,7 @@ If (Test-Path -Path $UnattendPrefixPath){
 }
 #Ask for device name if unattend exists
 if ($Unattend -and $UnattendPrefix) {
-    $deployVolume = (Get-Volume | Where-Object { $_.FileSystemLabel -eq 'Deploy' }).DriveLetter + ":"
-    $registerAutopilotPath = (Get-ChildItem -Path (Convert-Path $deployVolume) -Filter "Register-Autopilot.ps1" -Recurse -ErrorAction SilentlyContinue).FullName
+    $registerAutopilotPath = Join-Path -Path $APFolder -ChildPath "Register-Autopilot.ps1"
     $autopilotContent = Get-Content -Path $registerAutopilotPath
     WriteLog 'Unattend file found with prefixes.txt. Getting prefixes.'
     $selection = @"
@@ -482,18 +483,20 @@ Please select the deployment team:
     }
     if ($deploymentType.ToUpperInvariant() -eq 'Y') {
         $groupTag = "CAESATH-SHARED"
+        $autopilot = $false
     } else {
         if ($deploymentTeam -eq "Service Desk") {
             $groupTag = "CAESATH"
+            $autopilot = $false
         }
         if ($deploymentTeam -eq "Field Services") {
             $groupTag = "CAESFLD"
+            $autopilot = $true
             $autopilotContent = $autopilotContent -replace '\[bool\]\$Expedited = \$false', "[bool]`$Expedited = `$true"
         }
     }
     $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
     if ($deploymentType.ToUpperInvariant() -eq 'Y' -or $deploymentTeam -eq "Field Services") {
-        $autopilot = $false
         $computerName = Read-Host 'Type in the name of the computer'
         $computerName = $computerName -replace "\s",""
         if ($computerName.Length -gt 15) {
@@ -777,9 +780,13 @@ if ($computername) {
 }
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
-if (Test-Path -Path (Join-Path -Path $USBDrive -ChildPath "Autopilot.exe") -PathType Leaf) {
+if (Test-Path -Path $Drivers -PathType Container) {
+    Remove-Item -Path $Drivers -Recurse -Force
+}
+$autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
+if (Test-Path -Path $autopilotexe -PathType Leaf) {
     New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
-    Copy-Item -Path (Join-Path -Path $USBDrive -ChildPath "Autopilot.exe") -Destination "W:\Autopilot"
+    Copy-Item -Path $autopilotexe -Destination "W:\Autopilot"
     $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
     $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
     New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
@@ -788,6 +795,9 @@ if (Test-Path -Path (Join-Path -Path $USBDrive -ChildPath "Autopilot.exe") -Path
 # powershell -command { Start-Process -FilePath "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File ""C:\Autopilot\Register-Autopilot.ps1""" -WindowStyle Hidden }
 #Copy DISM log to USBDrive
 WriteLog "Copying dism log to $USBDrive"
-invoke-process xcopy "X:\Windows\logs\dism\dism.log $USBDrive /Y" 
-WriteLog "Copying dism log to $USBDrive succeeded"
+invoke-process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
+WriteLog "Copying dism log to $LogFileDir succeeded"
+if ($computerManufacturer -eq "Dell Inc.") {
+    Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' 'hdd'
+}
 Restart-Computer -Force
