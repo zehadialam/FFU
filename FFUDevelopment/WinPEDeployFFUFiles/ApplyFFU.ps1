@@ -57,14 +57,12 @@ function Set-Computername {
         $nsManager.AddNamespace("u", "urn:schemas-microsoft-com:unattend")
         $computerNameNodes = $xml.SelectNodes("//u:ComputerName", $nsManager)
         if ($computerNameNodes.Count -eq 0) {
-            Write-Warning "No ComputerName node found in the unattend.xml file. Adding a new one."
+            WriteLog "No ComputerName node found in the unattend.xml file. Adding a new one."
             $componentNode = $xml.SelectSingleNode("//u:component", $nsManager)
             if ($componentNode) {
                 $newComputerNameNode = $xml.CreateElement("ComputerName", "urn:schemas-microsoft-com:unattend")
                 $newComputerNameNode.InnerText = $computername
                 $componentNode.AppendChild($newComputerNameNode) | Out-Null
-            } else {
-                throw "No component node found in the unattend.xml file."
             }
         } else {
             foreach ($node in $computerNameNodes) {
@@ -72,12 +70,12 @@ function Set-Computername {
             }
         }
         $xml.Save($UnattendFile)
-        Write-Output "Computer name set to: $computername"
+        WriteLog "Computer name set to: $computername"
         return $computername
     }
     catch {
-        Write-Error "An error occurred: $_"
-        return $null
+        WriteLog "An error occurred: $_"
+        throw $_
     }
 }
 
@@ -245,8 +243,8 @@ function Save-DriverPack {
             GetDriverPackCommand = { Get-DellDriverPack -Compatible }
             GetDriverPackUrl = { param($result) $result | Sort-Object -Property DriverPackOS -Descending | Select-Object -ExpandProperty DriverPackUrl -First 1 }
             GetDriverPackHash = { param($result) $result | Sort-Object -Property DriverPackOS -Descending | Select-Object -ExpandProperty HashMD5 -First 1 }
-            HashAlgorithm = "MD5"
             ExtractCommand = { param($installer, $destination) Start-Process -FilePath $installer -ArgumentList "/e=$($destination)", "/s" -Wait -NoNewWindow }
+            HashAlgorithm = "MD5"
         }
     }
     if (-not $manufacturerMap.ContainsKey($Manufacturer)) {
@@ -255,18 +253,18 @@ function Save-DriverPack {
     }
     try {
         Write-Host "`nImporting OSD module..." -ForegroundColor Green
-        Import-Module OSD -ErrorAction SilentlyContinue
+        Import-Module OSD -ErrorAction SilentlyContinue | Out-Null
         Write-Host "Retrieving latest $Manufacturer driver pack catalog...`n" -ForegroundColor Green
         $manufacturerMap[$Manufacturer].UpdateCatalogCommand.Invoke()
         $driverPackResult = $manufacturerMap[$Manufacturer].GetDriverPackCommand.Invoke()
         if (-not $driverPackResult) {
-            Write-Warning "Failed to retrieve $Manufacturer driver pack."
+            Write-Warning "Failed to retrieve $Model driver pack."
             return
         }
         $driverPackUrl = $manufacturerMap[$Manufacturer].GetDriverPackUrl.Invoke($driverPackResult)
         $driverPackUrl = [string]$driverPackUrl
         if (-not $driverPackUrl) {
-            Write-Warning "Failed to retrieve $Manufacturer driver pack."
+            Write-Warning "Failed to retrieve $Model driver pack."
             return
         }
         $driverPackHash = $manufacturerMap[$Manufacturer].GetDriverPackHash.Invoke($driverPackResult)
@@ -279,7 +277,7 @@ function Save-DriverPack {
         Write-Host "`nDownloading latest $Model driver pack from $driverPackUrl...`n" -ForegroundColor Green
         Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $driverPackUrl, "-o $driverPackInstaller" -Wait -NoNewWindow
         if (-not (Test-Path $driverPackInstaller -PathType Leaf)) {
-            Write-Warning "Failed to download $Manufacturer driver pack."
+            Write-Warning "Failed to download $Model driver pack."
             return
         }
         Write-Host "`nCalculating driver pack hash...`n" -ForegroundColor Green
@@ -302,6 +300,52 @@ function Save-DriverPack {
         }
         $extractCommand.Invoke($driverPackInstaller, $driverFolder)
         return $driverFolder
+    } catch {
+        throw $_
+    }
+}
+
+function Update-DellBIOS {
+    param (
+        [string]$Model
+    )
+    try {
+        $computerBiosVersion = Get-MyBiosVersion
+        $catalogBiosVersion = (Get-MyDellBios).DellVersion
+        if ($computerBiosVersion -eq $catalogBiosVersion) {
+            Write-Host "`nThe current BIOS version $computerBiosVersion is the latest.`n" -ForegroundColor Green
+            return
+        }
+        $biosUrl = (Get-MyDellBios).Url
+        $flash64WUrl = "https://dl.dell.com/FOLDER10855396M/1/Flash64W_Ver3.3.22.zip"
+        $biosHash = (Get-MyDellBios).HashMD5
+        $biosFile = Split-Path -Path $biosUrl -Leaf
+        $flash64WFile = Split-Path -Path $flash64WUrl -Leaf
+        $biosFilePath = Join-Path -Path "W:\Drivers" -ChildPath $biosFile
+        $flash64WFilePath = Join-Path -Path "W:\Drivers" -ChildPath $flash64WFile
+        Write-Host "`nDownloading latest $Model bios from $biosUrl...`n" -ForegroundColor Green
+        Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $biosUrl, "-o $biosFilePath" -Wait -NoNewWindow
+        Write-Host "`nDownloading Dell System Firmware Update Utility from $flash64WUrl...`n" -ForegroundColor Green
+        Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $flash64WUrl, "-o $flash64WFilePath" -Wait -NoNewWindow
+        Write-Host "`nCalculating bios hash...`n" -ForegroundColor Green
+        $downloadedBios = Get-FileHash -Path $biosFilePath -Algorithm MD5
+        Write-Host "Calculated MD5 hash: $($downloadedBios.Hash)"
+        Write-Host "Catalog MD5 hash:    $biosHash"
+        if ($downloadedBios.Hash -ne $biosHash) {
+            Write-Host "MD5 hashes do not match. BIOS update will not proceed." -ForegroundColor Red
+            return
+        }
+        Write-Host "MD5 hashes match. BIOS integrity check succeeded." -ForegroundColor Green
+        Expand-Archive -Path $flash64WFilePath -DestinationPath "W:\Drivers" -Force
+        $flash64WExe = Get-ChildItem -Path "W:\Drivers" -Filter "Flash64W.exe" -Recurse -File
+        if (-not $flash64WExe) {
+            Write-Host "Could not find the Dell System Firmware Update Utility" -ForegroundColor Red
+            return
+        }
+        Move-Item -Path $biosFilePath -Destination $flash64WExe.DirectoryName -Force
+        Write-Host "Installing BIOS update..." -ForegroundColor Green
+        Set-Location -Path $flash64WExe.DirectoryName
+        Start-Process -FilePath $flash64WExe.FullName -ArgumentList "/b=$($biosFile) /s" -Wait -NoNewWindow
     } catch {
         throw $_
     }
@@ -508,7 +552,7 @@ Please select the deployment team:
     } else {
         $UnattendPrefixes = @(Get-content $UnattendPrefixFile)
         $UnattendPrefixCount = $UnattendPrefixes.Count
-        If ($UnattendPrefixCount -gt 1) {
+        if ($UnattendPrefixCount -gt 1) {
             WriteLog "Found $UnattendPrefixCount Prefixes"
             $array = @()
             for($i = 0; $i -le $UnattendPrefixCount -1; $i++){
@@ -554,7 +598,7 @@ Please select the deployment team:
     WriteLog 'No unattend folder found. Device name will be set via PPKG, AP JSON, or default OS name.'
 }
 #If both AP and PPKG folder found with files, ask which to use.
-If($autopilot -eq $true -and $PPKG -eq $true){
+if ($autopilot -eq $true -and $PPKG -eq $true) {
     WriteLog 'Both PPKG and Autopilot json files found'
     Write-Host 'Both Autopilot JSON files and Provisioning packages were found.'
     do {
@@ -606,7 +650,7 @@ if ($APFilesCount -gt 1 -and $autopilot -eq $true) {
 if ($PPKGFilesCount -gt 1 -and $PPKG -eq $true) {
     WriteLog "Found $PPKGFilesCount PPKG Files"
     $array = @()
-    for($i=0;$i -le $PPKGFilesCount -1;$i++){
+    for ($i = 0; $i -le $PPKGFilesCount -1; $i++) {
         $Properties = [ordered]@{Number = $i + 1 ; PPKGFile = $PPKGFiles[$i].FullName; PPKGFileName = $PPKGFiles[$i].Name}
         $array += New-Object PSObject -Property $Properties
     }
@@ -744,7 +788,7 @@ if ($APFileToInstall) {
     }
 }
 #Apply PPKG
-if ($PPKGFileToInstall){
+if ($PPKGFileToInstall) {
     try {
         #Make sure to delete any existing PPKG on the USB drive
         Get-Childitem -Path $USBDrive\*.ppkg | ForEach-Object {
@@ -780,6 +824,7 @@ if ($computername) {
 }
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
+
 if (Test-Path -Path $Drivers -PathType Container) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
@@ -798,6 +843,10 @@ WriteLog "Copying dism log to $USBDrive"
 invoke-process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"
 if ($computerManufacturer -eq "Dell Inc.") {
-    Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' 'hdd'
+    $bootSequence = Get-ChildItem -Path "DellSmbios:\BootSequence\BootSequence" | Select-Object -ExpandProperty CurrentValue
+    $hddDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -like 'hdd*' }).DeviceNumber
+    $otherDeviceNumbers = $bootSequence | Where-Object { $_.shortform -notlike 'hdd*'}.DeviceNumber
+    $combinedSequence = ($hddDeviceNumbers + $otherDeviceNumbers) -join ','
+    Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' $combinedSequence
 }
 Restart-Computer -Force

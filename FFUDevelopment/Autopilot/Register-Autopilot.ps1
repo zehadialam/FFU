@@ -44,7 +44,10 @@ if ($autopilotDevice -and -not $autopilotDevice.GroupTag) {
 
 if (-not $Expedited) {
     do {
-        $profileAssigned = $autopilotDevice.DeploymentProfileAssignmentStatus
+        $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
+        if (-not $profileAssigned) {
+            $profileAssigned = "Unknown"
+        }
         if ($profileAssigned -notlike "assigned*") {
             Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssigned" -ForegroundColor Yellow
             Start-Sleep -Seconds 30
@@ -54,7 +57,6 @@ if (-not $Expedited) {
     } while ($profileAssigned -notlike "assigned*")
 }
 
-Uninstall-Script -Name Get-WindowsAutopilotInfo -Force -Confirm:$false
 Uninstall-Module -Name WindowsAutopilotIntune -Force -Confirm:$false
 
 $taskName = "CleanupandRestart"
