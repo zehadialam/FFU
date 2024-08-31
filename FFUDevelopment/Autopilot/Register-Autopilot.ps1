@@ -42,6 +42,25 @@ if ($autopilotDevice -and -not $autopilotDevice.GroupTag) {
     Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
 }
 
+$groupMapping = @{
+    "CAESATH"     = "CAES OIT-Autopilot"
+    "CAESFLD"     = "CAES Field Services Autopilot"
+    "CAES-SHARED" = "CAES OIT-Self-Deploying Autopilot"
+}
+
+$securityGroupName = $groupMapping[$GroupTag]
+$securityGroup = Get-MgGroup -Filter "DisplayName eq '$securityGroupName'"
+if (-not $securityGroup) {
+    throw "The group $securityGroup was not found"
+}
+$uri = "https://graph.microsoft.com/beta/devices?`$filter=deviceId eq '" + "$(($autopilotDevice).azureActiveDirectoryDeviceId)" + "'"
+$entraDevice = (Invoke-MgGraphRequest -Uri $uri -Method GET -OutputType PSObject -SkipHttpErrorCheck).value
+if (-not $entraDevice) {
+    throw "The device was not found in Entra"
+}
+New-MgGroupMember -GroupId $securityGroup.Id -DirectoryObjectId $entraDevice.Id
+Write-Host "Added device to the $securityGroup group" -ForegroundColor Green
+
 if (-not $Expedited) {
     do {
         $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
@@ -51,13 +70,18 @@ if (-not $Expedited) {
         if ($profileAssigned -notlike "assigned*") {
             Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssigned" -ForegroundColor Yellow
             Start-Sleep -Seconds 30
-        } else {
+        }
+        else {
             Write-Host "Autopilot profile is assigned." -ForegroundColor Green
         }
     } while ($profileAssigned -notlike "assigned*")
 }
 
 Uninstall-Module -Name WindowsAutopilotIntune -Force -Confirm:$false
+
+if (Get-InstalledScript -Name Get-WindowsAutopilotInfo) {
+    Uninstall-Script -Name Get-WindowsAutopilotInfo -Force -Confirm:$false
+}
 
 $taskName = "CleanupandRestart"
 $command = @"
