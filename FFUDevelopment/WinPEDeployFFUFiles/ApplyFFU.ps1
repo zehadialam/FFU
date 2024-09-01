@@ -535,6 +535,7 @@ Please select the deployment team:
         $deploymentType = Read-Host 'Is this a shared device? [Y]es or [N]o'
     } until ($deploymentType -match '^[YyNn]$')
     if ($deploymentTeam -eq "Field Services") {
+        $SetupCompleteData += "`npowershell.exe -command { Add-Computer -WorkgroupName COUNTY }"
         do {
             $localAccount = Read-Host 'Do you want to create a local account? [Y]es or [N]o'
         } until ($localAccount -match '^[YyNn]$')
@@ -556,7 +557,7 @@ Please select the deployment team:
         if ($deploymentTeam -eq "Field Services") {
             $groupTag = "CAESFLD"
             $autopilot = $true
-            $autopilotContent = $autopilotContent -replace '\[bool\]\$Expedited = \$false', "[bool]`$Expedited = `$true"
+            $autopilotContent = $autopilotContent -replace '\[bool\]\$Assign = \$true', "[bool]`$Assign = `$false"
         }
     }
     $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
