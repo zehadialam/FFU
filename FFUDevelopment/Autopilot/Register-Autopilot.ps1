@@ -13,29 +13,29 @@ Write-Host "`nInstalling Microsoft.Graph.DeviceManagement..." -ForegroundColor Y
 Install-Module -Name Microsoft.Graph.DeviceManagement -Force -Confirm:$false
 Write-Host "Installed Microsoft.Graph.DeviceManagement" -ForegroundColor Green
 Write-Host "Importing Microsoft.Graph.DeviceManagement module..." -ForegroundColor Yellow
-Import-Module -Name Microsoft.Graph.DeviceManagement
+Import-Module -Name Microsoft.Graph.DeviceManagement -Force
 Write-Host "Microsoft.Graph.DeviceManagement module is imported" -ForegroundColor Green
 
 Write-Host "`nInstalling Microsoft.Graph.DeviceManagement.Enrollment" -ForegroundColor Yellow
 Install-Module -Name Microsoft.Graph.DeviceManagement.Enrollment -Force -Confirm:$false
 Write-Host "Installed Microsoft.Graph.DeviceManagement.Enrollment" -ForegroundColor Green
 Write-Host "Importing Microsoft.Graph.DeviceManagement.Enrollment module..." -ForegroundColor Yellow
-Import-Module -Name Microsoft.Graph.DeviceManagement.Enrollment
+Import-Module -Name Microsoft.Graph.DeviceManagement.Enrollment -Force
 Write-Host "Microsoft.Graph.DeviceManagement.Enrollment module is imported" -ForegroundColor Green
 
-Write-Host "`nInstalling Microsoft.Graph.DirectoryManagement..." -ForegroundColor Yellow
-Install-Module -Name Microsoft.Graph.DirectoryManagement -Force -Confirm:$false
-Write-Host "Installed Microsoft.Graph.DirectoryManagement" -ForegroundColor Green
-Write-Host "Importing Microsoft.Graph.DirectoryManagement module..." -ForegroundColor Yellow
-Import-Module -Name Microsoft.Graph.DirectoryManagement
-Write-Host "Microsoft.Graph.DirectoryManagement module is imported" -ForegroundColor Green
+Write-Host "`nInstalling Microsoft.Graph.Identity.DirectoryManagement..." -ForegroundColor Yellow
+Install-Module -Name Microsoft.Graph.Identity.DirectoryManagement -Force -Confirm:$false
+Write-Host "Installed Microsoft.Graph.Identity.DirectoryManagement" -ForegroundColor Green
+Write-Host "Importing Microsoft.Graph.Identity.DirectoryManagement module..." -ForegroundColor Yellow
+Import-Module -Name Microsoft.Graph.Identity.DirectoryManagement -Force
+Write-Host "Microsoft.Graph.Identity.DirectoryManagement module is imported" -ForegroundColor Green
 
-Write-Host "`nInstalling WindowsAutopilotIntuneCommunity module..." -ForegroundColor Yellow
-Install-Module -Name WindowsAutopilotIntuneCommunity -Force -Confirm:$false
-Write-Host "WindowsAutopilotIntuneCommunity module is installed." -ForegroundColor Green
-Write-Host "Importing WindowsAutopilotIntuneCommunity module..." -ForegroundColor Yellow
-Import-Module -Name WindowsAutopilotIntuneCommunity
-Write-Host "WindowsAutopilotIntuneCommunity module is imported" -ForegroundColor Green
+Write-Host "`nInstalling WindowsAutopilotIntune module..." -ForegroundColor Yellow
+Install-Module -Name WindowsAutopilotIntune -Force -Confirm:$false
+Write-Host "WindowsAutopilotIntune module is installed." -ForegroundColor Green
+Write-Host "Importing WindowsAutopilotIntune module..." -ForegroundColor Yellow
+Import-Module -Name WindowsAutopilotIntune -Force
+Write-Host "WindowsAutopilotIntune module is imported" -ForegroundColor Green
 
 do {
     $prompt = Read-Host "`nPress Enter to continue"
@@ -72,14 +72,17 @@ if ($intuneDevice) {
         }
     }
 }
+else {
+    Write-Host "Device does not already exist in Intune" -ForegroundColor Green
+}
 
 Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
 $autopilotDevice = Get-AutopilotDevice -Serial $serialNumber
 
 if (-not $autopilotDevice) {
     Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag...`n" -ForegroundColor Yellow
-    Install-Script -Name Get-WindowsAutopilotInfoCommunity -Force
-    Get-WindowsAutopilotInfoCommunity -Online -GroupTag $GroupTag
+    Install-Script -Name Get-WindowsAutopilotInfo -Force
+    Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag
     Write-Host "`n"
 }
 
@@ -100,6 +103,7 @@ $securityGroup = Get-MgGroup -Filter "DisplayName eq '$securityGroupName'"
 if (-not $securityGroup) {
     throw "The group $securityGroup was not found"
 }
+$autopilotDevice = Get-AutopilotDevice -Serial $serialNumber
 $uri = "https://graph.microsoft.com/beta/devices?`$filter=deviceId eq '" + "$(($autopilotDevice).azureActiveDirectoryDeviceId)" + "'"
 $entraDevice = (Invoke-MgGraphRequest -Uri $uri -Method GET -OutputType PSObject -SkipHttpErrorCheck).value
 if (-not $entraDevice) {
@@ -124,17 +128,13 @@ if ($Assign) {
     } while ($profileAssigned -notlike "assigned*")
 }
 
-Uninstall-Module -Name WindowsAutopilotIntuneCommunity -Force -Confirm:$false
-if (Get-InstalledScript -Name Get-WindowsAutopilotInfoCommunity) {
-    Uninstall-Script -Name Get-WindowsAutopilotInfoCommunity -Force -Confirm:$false
+Uninstall-Module -Name WindowsAutopilotIntune -Force -Confirm:$false
+if (Get-InstalledScript -Name Get-WindowsAutopilotInfo) {
+    Uninstall-Script -Name Get-WindowsAutopilotInfo -Force -Confirm:$false
 }
 
 $taskName = "CleanupandRestart"
 $command = @"
-$modules = Get-InstalledModule -Name Microsoft.Graph* -ErrorAction SilentlyContinue
-foreach ($module in $modules) {
-    Uninstall-Module -Name $module.Name -Force
-}
 Remove-Item -Path 'C:\Autopilot' -Recurse -Force
 Remove-Item -Path 'C:\Windows\Setup\Scripts' -Recurse -Force
 schtasks /Delete /TN '$taskName' /F

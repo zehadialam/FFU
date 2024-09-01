@@ -222,7 +222,7 @@ function Optimize-BIOSSettings {
         [string]$ComputerManufacturer
     )
     if ($ComputerManufacturer -eq "Dell Inc.") {
-        Write-Host "Importing DellBIOSProvider module..." -ForegroundColor Green
+        Write-Host "`nImporting DellBIOSProvider module..." -ForegroundColor Green
         Import-Module DellBIOSProvider -ErrorAction SilentlyContinue | Out-Null
         Optimize-DellBIOSSettings
     }
@@ -319,10 +319,11 @@ function Update-DellBIOS {
         [string]$Model
     )
     try {
+        Write-Host "`nChecking for BIOS update..." -ForegroundColor Yellow
         $computerBiosVersion = Get-MyBiosVersion
         $catalogBiosVersion = (Get-MyDellBios).DellVersion
         if ($computerBiosVersion -eq $catalogBiosVersion) {
-            Write-Host "`nThe current BIOS version $computerBiosVersion is the latest.`n" -ForegroundColor Green
+            Write-Host "The current BIOS version $computerBiosVersion is the latest." -ForegroundColor Green
             return
         }
         Write-Host "`nThe current BIOS version $computerBiosVersion is not the latest ($catalogBiosVersion)" -ForegroundColor Yellow
@@ -890,7 +891,7 @@ WriteLog "Copying dism log to $LogFileDir succeeded"
 if ($computerManufacturer -eq "Dell Inc.") {
     $bootSequence = Get-ChildItem -Path "DellSmbios:\BootSequence\BootSequence" | Select-Object -ExpandProperty CurrentValue
     $hddDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -like 'hdd*' }).DeviceNumber
-    $otherDeviceNumbers = $bootSequence | Where-Object { $_.shortform -notlike 'hdd*' }.DeviceNumber
+    $otherDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -notlike 'hdd*' }).DeviceNumber
     $combinedSequence = ($hddDeviceNumbers + $otherDeviceNumbers) -join ','
     Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' $combinedSequence
 }
