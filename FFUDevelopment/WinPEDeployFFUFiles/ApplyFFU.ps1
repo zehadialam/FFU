@@ -146,7 +146,7 @@ function Enable-DellBIOSSetting {
     $setting = Get-ChildItem -Path $BiosSettingsPath -ErrorAction SilentlyContinue | 
     Where-Object { $_.Attribute -contains $SettingName }
     if (-not $setting) {
-        Write-Warning $UnsupportedMessage
+        Write-Host $UnsupportedMessage -ForegroundColor Yellow
         return
     }
     $settingValue = $setting.CurrentValue
