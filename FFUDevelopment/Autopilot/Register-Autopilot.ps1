@@ -18,10 +18,10 @@ $modules = @(
 
 foreach ($module in $modules) {
     Write-Host "`nInstalling $module module..." -ForegroundColor Yellow
-    Install-Module -Name $module -Force -Confirm:$false -AllowClobber -Scope CurrentUser
+    Install-Module -Name $module -Force -Confirm:$false -AllowClobber -Scope CurrentUser -WarningAction SilentlyContinue
     Write-Host "$module module is installed." -ForegroundColor Green
     Write-Host "Importing $module module..." -ForegroundColor Yellow
-    Import-Module -Name $module -Force -NoClobber
+    Import-Module -Name $module -Force -NoClobber -WarningAction SilentlyContinue
     Write-Host "$module module is imported" -ForegroundColor Green
 }
 
@@ -132,7 +132,7 @@ if (-not $securityGroup) {
 }
 
 do {
-    Write-Host "Waiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
+    Write-Host "`nWaiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
     $autopilotDevice = Get-AutopilotDevice -Serial $serialNumber
     $uri = "https://graph.microsoft.com/beta/devices?`$filter=deviceId eq '" + "$(($autopilotDevice).azureActiveDirectoryDeviceId)" + "'"
     $entraDevice = (Invoke-MgGraphRequest -Uri $uri -Method GET -OutputType PSObject -SkipHttpErrorCheck).value
@@ -181,4 +181,5 @@ shutdown /r /t 3
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"$command`""
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(3)
 $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Priority 0
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings

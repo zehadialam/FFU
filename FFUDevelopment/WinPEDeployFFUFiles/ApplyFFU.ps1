@@ -222,8 +222,9 @@ function Optimize-BIOSSettings {
         [string]$ComputerManufacturer
     )
     if ($ComputerManufacturer -eq "Dell Inc.") {
-        Write-Host "`nImporting DellBIOSProvider module..." -ForegroundColor Green
+        Write-Host "`nImporting DellBIOSProvider module..." -ForegroundColor Yellow
         Import-Module DellBIOSProvider -ErrorAction SilentlyContinue | Out-Null
+        Write-Host "DellBIOSProvider module is imported`n" -ForegroundColor Green
         Optimize-DellBIOSSettings
     }
 }
@@ -329,16 +330,20 @@ function Update-DellBIOS {
         Write-Host "`nThe current BIOS version $computerBiosVersion is not the latest ($catalogBiosVersion)" -ForegroundColor Yellow
         $biosUrl = (Get-MyDellBios).Url
         $flash64WUrl = "https://dl.dell.com/FOLDER10855396M/1/Flash64W_Ver3.3.22.zip"
-        $biosHash = (Get-MyDellBios).HashMD5
+        $biosHash = ((Get-MyDellBios).HashMD5).toUpper()
         $biosFile = Split-Path -Path $biosUrl -Leaf
         $flash64WFile = Split-Path -Path $flash64WUrl -Leaf
         $biosFilePath = Join-Path -Path "W:\Drivers" -ChildPath $biosFile
         $flash64WFilePath = Join-Path -Path "W:\Drivers" -ChildPath $flash64WFile
         Write-Host "`nDownloading latest $Model bios from $biosUrl...`n" -ForegroundColor Green
+        $curl = Join-Path -Path ([Environment]::SystemDirectory) -ChildPath "curl\bin\curl.exe"
         Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $biosUrl, "-o $biosFilePath" -Wait -NoNewWindow
         Write-Host "`nDownloading Dell System Firmware Update Utility from $flash64WUrl...`n" -ForegroundColor Green
-        Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $flash64WUrl, "-o $flash64WFilePath" -Wait -NoNewWindow
-        Write-Host "`nCalculating bios hash...`n" -ForegroundColor Green
+        $headers = @{
+            "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36"
+        }
+        Invoke-WebRequest -Uri $flash64WUrl -OutFile $flash64WFilePath -Headers $headers
+        Write-Host "Calculating bios hash...`n" -ForegroundColor Green
         $downloadedBios = Get-FileHash -Path $biosFilePath -Algorithm MD5
         Write-Host "Calculated MD5 hash: $($downloadedBios.Hash)"
         Write-Host "Catalog MD5 hash:    $biosHash"
@@ -347,6 +352,7 @@ function Update-DellBIOS {
             return
         }
         Write-Host "MD5 hashes match. BIOS integrity check succeeded." -ForegroundColor Green
+        Write-Host "`nExtracting $flash64WFile to W:\Drivers..." -ForegroundColor Green
         Expand-Archive -Path $flash64WFilePath -DestinationPath "W:\Drivers" -Force
         $flash64WExe = Get-ChildItem -Path "W:\Drivers" -Filter "Flash64W.exe" -Recurse -File
         if (-not $flash64WExe) {
@@ -354,9 +360,10 @@ function Update-DellBIOS {
             return
         }
         Move-Item -Path $biosFilePath -Destination $flash64WExe.DirectoryName -Force
-        Write-Host "Installing BIOS update..." -ForegroundColor Green
+        Write-Host "`nInstalling BIOS update..." -ForegroundColor Green
         Set-Location -Path $flash64WExe.DirectoryName
         Start-Process -FilePath $flash64WExe.FullName -ArgumentList "/b=$($biosFile) /s" -Wait -NoNewWindow
+        Set-Location -Path "X:\windows\system32"
     }
     catch {
         throw $_
