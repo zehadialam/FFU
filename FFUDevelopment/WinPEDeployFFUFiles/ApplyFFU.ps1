@@ -222,7 +222,7 @@ function Optimize-BIOSSettings {
         [string]$ComputerManufacturer
     )
     if ($ComputerManufacturer -eq "Dell Inc.") {
-        Write-Host "`nImporting DellBIOSProvider module..." -ForegroundColor Yellow
+        Write-Host "Importing DellBIOSProvider module..." -ForegroundColor Yellow
         Import-Module DellBIOSProvider -ErrorAction SilentlyContinue | Out-Null
         Write-Host "DellBIOSProvider module is imported`n" -ForegroundColor Green
         Optimize-DellBIOSSettings
@@ -260,9 +260,11 @@ function Save-DriverPack {
         return
     }
     try {
-        Write-Host "`nImporting OSD module..." -ForegroundColor Green
+        Write-Host "`nPreparing to install drivers..." -ForegroundColor Yellow
+        Write-Host "Importing OSD module..." -ForegroundColor Yellow
         Import-Module OSD -ErrorAction SilentlyContinue | Out-Null
-        Write-Host "Retrieving latest $Manufacturer driver pack catalog...`n" -ForegroundColor Green
+        Write-Host "OSD module is imported" -ForegroundColor Green
+        Write-Host "`nRetrieving latest $Manufacturer driver pack catalog...`n" -ForegroundColor Yellow
         $manufacturerMap[$Manufacturer].UpdateCatalogCommand.Invoke()
         $driverPackResult = $manufacturerMap[$Manufacturer].GetDriverPackCommand.Invoke()
         if (-not $driverPackResult) {
@@ -282,13 +284,13 @@ function Save-DriverPack {
         $driverPack = Split-Path -Path $driverPackUrl -Leaf
         $driverPackInstaller = Join-Path -Path $driverFolder -ChildPath $driverPack
         $curl = Join-Path -Path ([Environment]::SystemDirectory) -ChildPath "curl\bin\curl.exe"
-        Write-Host "`nDownloading latest $Model driver pack from $driverPackUrl...`n" -ForegroundColor Green
+        Write-Host "`nDownloading latest $Model driver pack from $driverPackUrl...`n" -ForegroundColor Yellow
         Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $driverPackUrl, "-o $driverPackInstaller" -Wait -NoNewWindow
         if (-not (Test-Path $driverPackInstaller -PathType Leaf)) {
             Write-Warning "Failed to download $Model driver pack."
             return
         }
-        Write-Host "`nCalculating driver pack hash...`n" -ForegroundColor Green
+        Write-Host "`nCalculating driver pack hash...`n" -ForegroundColor Yellow
         $hashAlgorithm = $manufacturerMap[$Manufacturer].HashAlgorithm
         $downloadedDriverPack = Get-FileHash -Path $driverPackInstaller -Algorithm $hashAlgorithm
         Write-Host "Calculated $hashAlgorithm hash: $($downloadedDriverPack.Hash)"
@@ -298,7 +300,7 @@ function Save-DriverPack {
             return
         }
         Write-Host "$hashAlgorithm hashes match. Driver pack integrity check succeeded." -ForegroundColor Green
-        Write-Host "`nExtracting driver pack to $driverFolder..." -ForegroundColor Green
+        Write-Host "`nExtracting driver pack to $driverFolder..." -ForegroundColor Yellow
         $driverPackType = Get-Item $driverPackInstaller
         $driverPackFileExtension = $driverPackType.Extension
         if ($driverPackFileExtension -eq ".cab") {
@@ -335,7 +337,7 @@ function Update-DellBIOS {
         $flash64WFile = Split-Path -Path $flash64WUrl -Leaf
         $biosFilePath = Join-Path -Path "W:\Drivers" -ChildPath $biosFile
         $flash64WFilePath = Join-Path -Path "W:\Drivers" -ChildPath $flash64WFile
-        Write-Host "`nDownloading latest $Model bios from $biosUrl...`n" -ForegroundColor Green
+        Write-Host "`nDownloading latest $Model bios from $biosUrl...`n" -ForegroundColor Yellow
         $curl = Join-Path -Path ([Environment]::SystemDirectory) -ChildPath "curl\bin\curl.exe"
         Start-Process -FilePath $curl -ArgumentList "--connect-timeout 10", "-L", "--retry 5", "--retry-delay 1", "--retry-all-errors", $biosUrl, "-o $biosFilePath" -Wait -NoNewWindow
         Write-Host "`nDownloading Dell System Firmware Update Utility from $flash64WUrl...`n" -ForegroundColor Green
@@ -343,7 +345,7 @@ function Update-DellBIOS {
             "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36"
         }
         Invoke-WebRequest -Uri $flash64WUrl -OutFile $flash64WFilePath -Headers $headers
-        Write-Host "Calculating bios hash...`n" -ForegroundColor Green
+        Write-Host "Calculating bios hash...`n" -ForegroundColor Yellow
         $downloadedBios = Get-FileHash -Path $biosFilePath -Algorithm MD5
         Write-Host "Calculated MD5 hash: $($downloadedBios.Hash)"
         Write-Host "Catalog MD5 hash:    $biosHash"
@@ -352,7 +354,7 @@ function Update-DellBIOS {
             return
         }
         Write-Host "MD5 hashes match. BIOS integrity check succeeded." -ForegroundColor Green
-        Write-Host "`nExtracting $flash64WFile to W:\Drivers..." -ForegroundColor Green
+        Write-Host "`nExtracting $flash64WFile to W:\Drivers..." -ForegroundColor Yellow
         Expand-Archive -Path $flash64WFilePath -DestinationPath "W:\Drivers" -Force
         $flash64WExe = Get-ChildItem -Path "W:\Drivers" -Filter "Flash64W.exe" -Recurse -File
         if (-not $flash64WExe) {
@@ -360,9 +362,10 @@ function Update-DellBIOS {
             return
         }
         Move-Item -Path $biosFilePath -Destination $flash64WExe.DirectoryName -Force
-        Write-Host "`nInstalling BIOS update..." -ForegroundColor Green
+        Write-Host "`nInstalling BIOS update..." -ForegroundColor Yellow
         Set-Location -Path $flash64WExe.DirectoryName
         Start-Process -FilePath $flash64WExe.FullName -ArgumentList "/b=$($biosFile) /s" -Wait -NoNewWindow
+        Write-Host "BIOS update applied" -ForegroundColor Green
         Set-Location -Path "X:\windows\system32"
     }
     catch {
@@ -412,7 +415,8 @@ function Install-Drivers {
                 Write-Warning "Cannot find drivers for the $model model. The imaging process will continue without driver installation at this stage."
                 return
             }
-            Write-Host "`nInstalling drivers for $model..." -ForegroundColor Green
+            Write-Host "`nInstalling drivers for $model..." -ForegroundColor Yellow
+            Write-Host "`nRunning command DISM /Image:$MountPath /Add-Driver /Driver:""$driverPath"" /Recurse" -ForegroundColor Yellow
             Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$driverPath""", "/Recurse" -Wait -NoNewWindow
         }
     }
@@ -755,9 +759,14 @@ if (Test-Path -Path $Drivers) {
 }
 $computerManufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
 $model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
+Write-Host "`nComputer manufacturer is $computerManufacturer" -ForegroundColor Yellow
+Write-Host "Computer model is $model`n" -ForegroundColor Yellow
+Write-Host "Configuring BIOS settings...`n" -ForegroundColor Yellow
 Optimize-BIOSSettings -ComputerManufacturer $computerManufacturer
+Write-Host "`nConfiguring BIOS settings complete" -ForegroundColor Green
 #Partition drive
 Writelog 'Clean Disk'
+Write-Host "`nCleaning disk" -ForegroundColor Yellow
 try {
     $Disk = Get-Disk -Number $DiskID
     if ($Disk.PartitionStyle -ne "RAW") {
@@ -769,11 +778,29 @@ catch {
     throw $_
 }
 Writelog 'Cleaning Disk succeeded'
+Write-Host "Cleaning disk successful" -ForegroundColor Green
 #Apply FFU
 WriteLog "Applying FFU to $PhysicalDeviceID"
 WriteLog "Running command dism /apply-ffu /ImageFile:$FFUFileToInstall /ApplyDrive:$PhysicalDeviceID"
+Write-Host "`nRunning command DISM /Apply-FFU /ImageFile:$FFUFileToInstall /ApplyDrive:$PhysicalDeviceID" -ForegroundColor Yellow
 #In order for Applying Image progress bar to show up, need to call dism directly. Might be a better way to handle, but must have progress bar show up on screen.
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 DISM /Apply-FFU /ImageFile:$FFUFileToInstall /ApplyDrive:$PhysicalDeviceID
+$stopwatch.Stop()
+$elapsedSeconds = $stopwatch.Elapsed.TotalSeconds
+$minutes = [math]::Floor($elapsedSeconds / 60)
+$seconds = [math]::Round($elapsedSeconds % 60, 2)
+if ($elapsedSeconds -lt 60) {
+    $formattedTime = "{0:N2} seconds" -f $elapsedSeconds
+}
+elseif ($minutes -eq 1) {
+    $formattedTime = "{0} minute and {1} seconds" -f $minutes, $seconds
+}
+else {
+    $formattedTime = "{0} minutes and {1} seconds" -f $minutes, $seconds
+}
+Write-Host "`nImage was applied in $formattedTime." -ForegroundColor Green
+Write-Host "`nSetting GPT attributes to recovery partition" -ForegroundColor Yellow
 $recoveryPartition = Get-Partition -Disk $Disk | Where-Object PartitionNumber -eq 4
 if ($recoveryPartition) {
     WriteLog 'Setting recovery partition attributes'
@@ -785,6 +812,7 @@ if ($recoveryPartition) {
     )
     $diskpartScript | diskpart.exe | Out-Null
     WriteLog 'Setting recovery partition attributes complete'
+    Write-Host "GPT attributes applied to recovery partition" -ForegroundColor Green
 }
 if ($LASTEXITCODE -eq 0) {
     WriteLog 'Successfully applied FFU'
@@ -877,18 +905,22 @@ if ($computername) {
 }
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
-
 if (Test-Path -Path $Drivers -PathType Container) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
 $autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
-if (Test-Path -Path $autopilotexe -PathType Leaf) {
+$autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
+if ((Test-Path -Path $autopilotexe -PathType Leaf) -and (Test-Path -Path $autopilotGroupMapping -PathType Leaf)) {
     New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
-    Copy-Item -Path $autopilotexe -Destination "W:\Autopilot"
+    Copy-Item -Path $autopilotexe -Destination "W:\Autopilot" -Force
+    Copy-Item -Path $autopilotGroupMapping -Destination "W:\Autopilot" -Force
     $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
     $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
     New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
     Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
+}
+else {
+    throw "Autopilot files not found"
 }
 # powershell -command { Start-Process -FilePath "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File ""C:\Autopilot\Register-Autopilot.ps1""" -WindowStyle Hidden }
 #Copy DISM log to USBDrive
