@@ -116,20 +116,22 @@ else {
 do {
     $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction SilentlyContinue
     if (-not $autopilotDevice) {
-        Write-Host "`nWaiting until Autopilot device record is detected..." -ForegroundColor Yellow
+        Write-Host "Waiting until Autopilot device record is detected..." -ForegroundColor Yellow
         Start-Sleep -Seconds 10
     }
 } while (-not $autopilotDevice)
 
+Write-Host "Found device in Autopilot." -ForegroundColor Green
+
 do {
     $entraDevice = Get-MgDevice -Filter "DeviceId eq '$($autopilotdevice.azureActiveDirectoryDeviceId)'" -ErrorAction Stop
     if (-not $entraDevice) {
-        Write-Host "`nWaiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
+        Write-Host "Waiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
         Start-Sleep -Seconds 10
     }
 } while (-not $entraDevice)
 
-Write-Host "Found device in Entra" -ForegroundColor Green
+Write-Host "Found device in Entra." -ForegroundColor Green
 
 $autopilotGroupMappingPath = "C:\Autopilot\AutopilotGroupMapping.json"
 if (Test-Path -Path $autopilotGroupMappingPath -PathType Leaf) {

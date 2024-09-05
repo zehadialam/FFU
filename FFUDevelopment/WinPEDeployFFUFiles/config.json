@@ -1,0 +1,21 @@
+{
+    "deploymentTeams": [
+      {
+        "name": "Service Desk",
+        "id": 1,
+        "groupTag": "CAESATH",
+        "autopilot": false,
+        "script": "Invoke-ServiceDesk.ps1"
+      },
+      {
+        "name": "Field Services",
+        "id": 2,
+        "groupTag": "CAESFLD",
+        "autopilot": true,
+        "script": "Invoke-FieldServices.ps1"
+      }
+    ],
+    "workgroupName": "COUNTY",
+    "sharedGroupTag": "CAES-SHARED"
+  }
+  

@@ -928,12 +928,16 @@ else {
 WriteLog "Copying dism log to $LogFileDir"
 Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"
-WriteLog "Copying Flash64W log to $LogFileDir"
-Invoke-Process xcopy "x:\Flash64W.log $LogFileDir /Y"
-WriteLog "Copying Flash64W log to $LogFileDir succeeeded"
+if (Test-Path -Path "X:\Flash64.log" -PathType Leaf) {
+    WriteLog "Copying Flash64W log to $LogFileDir"
+    Invoke-Process xcopy "x:\Flash64W.log $LogFileDir /Y"
+    WriteLog "Copying Flash64W log to $LogFileDir succeeeded"
+}
 WriteLog "Setting Windows Boot Manager to be first in the display order"
+Write-Host "Setting Windows Boot Manager to be first in the display order" -ForegroundColor Yellow
 Invoke-Process bcdedit.exe "/set {fwbootmgr} displayorder {bootmgr} /addfirst"
 WriteLog "Setting default Windows boot loader to be first in the display order"
+Write-Host "Setting default Windows boot loader to be first in the display order" -ForegroundColor Yellow
 Invoke-Process bcdedit.exe "/set {bootmgr} displayorder {default} /addfirst"
 <#
 Get-Partition -DiskNumber $DiskID | Where-Object { $_.Type -eq 'SYSTEM'} | Set-Partition -NewDriveLetter 'S'
@@ -946,5 +950,5 @@ if ($computerManufacturer -eq "Dell Inc.") {
     Write-Host "Combined boot sequence is $combinedSequence" -ForegroundColor Yellow
     Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' $combinedSequence
 }
-Restart-Computer -Force
 #>
+Restart-Computer -Force
