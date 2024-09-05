@@ -345,7 +345,7 @@ function Update-DellBIOS {
             "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36"
         }
         Invoke-WebRequest -Uri $flash64WUrl -OutFile $flash64WFilePath -Headers $headers
-        Write-Host "Calculating bios hash...`n" -ForegroundColor Yellow
+        Write-Host "Calculating BIOS hash...`n" -ForegroundColor Yellow
         $downloadedBios = Get-FileHash -Path $biosFilePath -Algorithm MD5
         Write-Host "Calculated MD5 hash: $($downloadedBios.Hash)"
         Write-Host "Catalog MD5 hash:    $biosHash"
@@ -364,7 +364,8 @@ function Update-DellBIOS {
         Move-Item -Path $biosFilePath -Destination $flash64WExe.DirectoryName -Force
         Write-Host "`nInstalling BIOS update..." -ForegroundColor Yellow
         Set-Location -Path $flash64WExe.DirectoryName
-        Start-Process -FilePath $flash64WExe.FullName -ArgumentList "/b=$($biosFile) /s" -Wait -NoNewWindow
+        Write-Host "Running command $($flash64WExe.FullName) /b=$($biosFile) /s /f /l=x:\Flash64W.log" -ForegroundColor Yellow
+        Start-Process -FilePath $flash64WExe.FullName -ArgumentList "/b=$($biosFile) /s /f /l=x:\Flash64W.log" -Wait -NoNewWindow
         Write-Host "BIOS update applied" -ForegroundColor Green
         Set-Location -Path "X:\windows\system32"
     }
@@ -924,14 +925,26 @@ else {
 }
 # powershell -command { Start-Process -FilePath "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File ""C:\Autopilot\Register-Autopilot.ps1""" -WindowStyle Hidden }
 #Copy DISM log to USBDrive
-WriteLog "Copying dism log to $USBDrive"
-invoke-process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
+WriteLog "Copying dism log to $LogFileDir"
+Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"
+WriteLog "Copying Flash64W log to $LogFileDir"
+Invoke-Process xcopy "x:\Flash64W.log $LogFileDir /Y"
+WriteLog "Copying Flash64W log to $LogFileDir succeeeded"
+WriteLog "Setting Windows Boot Manager to be first in the display order"
+Invoke-Process bcdedit.exe "/set {fwbootmgr} displayorder {bootmgr} /addfirst"
+WriteLog "Setting default Windows boot loader to be first in the display order"
+Invoke-Process bcdedit.exe "/set {bootmgr} displayorder {default} /addfirst"
+<#
+Get-Partition -DiskNumber $DiskID | Where-Object { $_.Type -eq 'SYSTEM'} | Set-Partition -NewDriveLetter 'S'
+Copy-Item -Path "S:\EFI\Microsoft\Boot\bootmgfw.efi" -Destination "S:\EFI\Boot\bootx64.efi" -Force
 if ($computerManufacturer -eq "Dell Inc.") {
     $bootSequence = Get-ChildItem -Path "DellSmbios:\BootSequence\BootSequence" | Select-Object -ExpandProperty CurrentValue
     $hddDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -like 'hdd*' }).DeviceNumber
     $otherDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -notlike 'hdd*' }).DeviceNumber
     $combinedSequence = ($hddDeviceNumbers + $otherDeviceNumbers) -join ','
+    Write-Host "Combined boot sequence is $combinedSequence" -ForegroundColor Yellow
     Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' $combinedSequence
 }
 Restart-Computer -Force
+#>

@@ -34,74 +34,67 @@ Connect-MgGraph -NoWelcome
 $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
 $computerName = $env:COMPUTERNAME
 Write-Host "`nDevice serial number is $serialNumber" -ForegroundColor Yellow
+
 Write-Host "Checking if device already exists in Intune..." -ForegroundColor Yellow
 $intuneDevice = Get-MgDeviceManagementManagedDevice -Filter "serialNumber eq '$serialNumber'" -ErrorAction Stop
 if ($intuneDevice) {
     Write-Host "Device has been found in Intune. Deleting Intune device record..." -ForegroundColor Yellow
-    Remove-MgDeviceManagementManagedDevice -ManagedDeviceId $intuneDevice.Id -ErrorAction Stop
+    Remove-MgDeviceManagementManagedDevice -ManagedDeviceId $intuneDevice.Id -ErrorAction SilentlyContinue
     Write-Host "Device removed from Intune" -ForegroundColor Green
     $azureAdDeviceId = $intuneDevice.AzureAdDeviceId
 }
 else {
     Write-Host "Device does not already exist in Intune" -ForegroundColor Green
 }
+
 Write-Host "Checking if device already exists in Entra..." -ForegroundColor Yellow
-$entraDevice = if ($azureAdDeviceId) {
+$entraDeviceResult = if ($azureAdDeviceId) {
     Get-MgDevice -Filter "DeviceId eq '$azureAdDeviceId'"
 }
 else {
     Get-MgDevice -Filter "displayName eq '$computerName'"
 }
-if ($entraDevice -is [array] -and $entraDevice.Count -gt 1) {
-    Write-Host "Found $($entraDevice.Count) devices with name $computerName in Entra." -ForegroundColor Yellow
-    $entraDevice | Where-Object { $_.TrustType -ne "AzureAd" } | ForEach-Object {
-        Write-Host "Deleting device with name $computerName and join type $($_.TrustType)..." -ForegroundColor Yellow
-        Remove-MgDevice -DeviceId $_.Id -ErrorAction Stop
-    }
-    Start-Sleep -Seconds 10
-    $entraDevice = Get-MgDevice -Filter "displayName eq '$computerName'"
-}
-if ($entraDevice) {
-    Write-Host "Found device in Entra. Checking if device record needs deletion..." -ForegroundColor Yellow
-    $enrollmentType = $entraDevice.EnrollmentType
-    if ($enrollmentType -ne "AzureDomainJoined") {
-        Write-Host "Device enrollment type is $enrollmentType and requires deletion." -ForegroundColor Yellow
-        Write-Host "Checking if device is already registered with Autopilot..." -ForegroundColor Yellow
-        $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
-        if ($autopilotDevice) {
-            Write-Host "Device is registered with Autopilot. Deleting Autopilot device record..." -ForegroundColor Yellow
-            Remove-MgDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $autopilotDevice.Id -ErrorAction Stop
+if ($entraDeviceResult) {
+    Write-Host "Found device in Entra with the name $computerName. Checking if device record needs deletion..." -ForegroundColor Yellow
+    foreach ($entraDevice in $entraDeviceResult) {
+        $enrollmentType = $entraDevice.EnrollmentType
+        if ($enrollmentType -ne "AzureDomainJoined") {
+            Write-Host "Device enrollment type is $enrollmentType and requires deletion." -ForegroundColor Yellow
+            Write-Host "Checking if device is already registered with Autopilot..." -ForegroundColor Yellow
+            $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
+            if ($autopilotDevice) {
+                Write-Host "Device is registered with Autopilot. Deleting Autopilot device record..." -ForegroundColor Yellow
+                Remove-MgDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $autopilotDevice.Id -ErrorAction Stop
+                do {
+                    $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
+                    if ($autopilotDevice) {
+                        Write-Host "Waiting until Autopilot device record is no longer found..." -ForegroundColor Yellow
+                        Start-Sleep -Seconds 30
+                    }
+                } while ($autopilotDevice)
+                Write-Host "Device has been removed from Autopilot" -ForegroundColor Green
+            }
+            else {
+                Write-Host "Device is not already registered with Autopilot" -ForegroundColor Green
+            }
+            Write-Host "Deleting Entra device record..." -ForegroundColor Yellow
+            Remove-MgDevice -DeviceId $entraDevice.Id -ErrorAction Stop
             do {
-                Write-Host "Waiting until Autopilot device record is no longer found..." -ForegroundColor Yellow
-                Start-Sleep -Seconds 30
-                $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
-            } while ($autopilotDevice)
-            Write-Host "Device has been removed from Autopilot" -ForegroundColor Green
+                $entraDevice = Get-MgDevice -Filter "DeviceId eq '$($entraDevice.DeviceId)'" -ErrorAction Stop
+                if ($entraDevice) {
+                    Write-Host "Waiting until Entra device record is no longer found..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds 10
+                } 
+            } while ($entraDevice)
+            Write-Host "Device has been removed from Entra" -ForegroundColor Green
         }
         else {
-            Write-Host "Device is not already registered with Autopilot" -ForegroundColor Green
+            Write-Host "Device enrollment type is $enrollmentType and does not require deletion." -ForegroundColor Green
         }
-        Write-Host "Deleting Entra device record..." -ForegroundColor Yellow
-        Remove-MgDevice -DeviceId $entraDevice.Id -ErrorAction Stop
-        do {
-            Write-Host "Waiting until Entra device record is no longer found..." -ForegroundColor Yellow
-            Start-Sleep -Seconds 10
-            $entraDevice = Get-MgDevice -Filter "DeviceId eq '$($entraDevice.DeviceId)'" -ErrorAction Stop
-        } while ($entraDevice)
-        Write-Host "Device has been removed from Entra" -ForegroundColor Green
-    }
-    else {
-        Write-Host "Device enrollment type is $enrollmentType and does not require deletion." -ForegroundColor Green
     }
 }
 else {
-    $entraDevice = Get-MgDevice -Filter "displayName eq '$serialNumber'"
-    if (-not $entraDevice) {
-        Write-Host "Device does not already exist in Entra" -ForegroundColor Green
-    }
-    else {
-        Write-Host "Found device in Entra with the name $($entraDevice.displayName). It was likely added by the OEM." -ForegroundColor Green
-    }
+    Write-Host "Device with name $computerName does not already exist in Entra." -ForegroundColor Green
 }
 
 Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
@@ -111,24 +104,30 @@ if (-not $autopilotDevice) {
     Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag...`n" -ForegroundColor Yellow
     Install-Script -Name Get-WindowsAutopilotInfo -Force -Confirm:$false -Scope CurrentUser
     Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag
-    $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
+}
+elseif ($autopilotDevice.GroupTag -ne $GroupTag) {
+    Write-Host "Assigning the group tag $GroupTag to the device...`n" -ForegroundColor Yellow
+    Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
 }
 else {
     Write-Host "Device is registered with Autopilot." -ForegroundColor Green
 }
 
-if ($autopilotDevice -and $autopilotDevice.GroupTag -ne $GroupTag) {
-    Write-Host "Assigning the group tag $GroupTag to the device...`n" -ForegroundColor Yellow
-    Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
-}
+do {
+    $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction SilentlyContinue
+    if (-not $autopilotDevice) {
+        Write-Host "`nWaiting until Autopilot device record is detected..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+    }
+} while (-not $autopilotDevice)
 
-$entraDevice = Get-MgDevice -Filter "DeviceId eq '$($autopilotdevice.azureActiveDirectoryDeviceId)'" -ErrorAction Stop
-
-while (-not $entraDevice) {
-    Write-Host "`nWaiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 10
+do {
     $entraDevice = Get-MgDevice -Filter "DeviceId eq '$($autopilotdevice.azureActiveDirectoryDeviceId)'" -ErrorAction Stop
-}
+    if (-not $entraDevice) {
+        Write-Host "`nWaiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+    }
+} while (-not $entraDevice)
 
 Write-Host "Found device in Entra" -ForegroundColor Green
 
@@ -141,13 +140,11 @@ else {
 }
 
 $securityGroupName = $autopilotMappings.$GroupTag
-
 if (-not $securityGroupName) {
     throw "Security group name not found. Check the accuracy of the specified group tag or the AutopilotGroupMapping.json file."
 }
 
 $securityGroup = Get-MgGroup -Filter "DisplayName eq '$securityGroupName'"
-
 if (-not $securityGroup) {
     throw "The group $securityGroup was not found"
 }
