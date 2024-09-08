@@ -34,7 +34,6 @@ function Get-HardDrive() {
     }
     $DeviceID = $DiskDrive.DeviceID
     $BytesPerSector = $Diskdrive.BytesPerSector
-    # Create a custom object to return both values
     $result = New-Object PSObject -Property @{
         DeviceID       = $DeviceID
         BytesPerSector = $BytesPerSector
@@ -721,10 +720,8 @@ elseif ($PPKGFilesCount -eq 1 -and $PPKG -eq $true) {
 else {
     Writelog 'No PPKG files found or PPKG not selected.'
 }
-#Find Drivers
 $Drivers = $USBDrive + "Drivers"
 if (Test-Path -Path $Drivers) {
-    #Check if multiple driver folders found, if so, just select one folder to save time/space
     $DriverFolders = Get-ChildItem -Path $Drivers -directory
     $DriverFoldersCount = $DriverFolders.count
     if ($DriverFoldersCount -gt 1) {
@@ -765,7 +762,6 @@ Write-Host "Computer model is $model`n" -ForegroundColor Yellow
 Write-Host "Configuring BIOS settings...`n" -ForegroundColor Yellow
 Optimize-BIOSSettings -ComputerManufacturer $computerManufacturer
 Write-Host "`nConfiguring BIOS settings complete" -ForegroundColor Green
-#Partition drive
 Writelog 'Clean Disk'
 Write-Host "`nCleaning disk" -ForegroundColor Yellow
 try {
@@ -911,20 +907,26 @@ if (Test-Path -Path $Drivers -PathType Container) {
 }
 $autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
 $autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
-if ((Test-Path -Path $autopilotexe -PathType Leaf) -and (Test-Path -Path $autopilotGroupMapping -PathType Leaf)) {
+$autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
+$autopilotFiles = @(
+    $autopilotexe,
+    $autopilotGroupMapping,
+    $autopilotCleanup
+)
+if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
     New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
-    Copy-Item -Path $autopilotexe -Destination "W:\Autopilot" -Force
-    Copy-Item -Path $autopilotGroupMapping -Destination "W:\Autopilot" -Force
-    $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
-    $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
-    New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
-    Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 }
-else {
-    throw "Autopilot files not found"
+foreach ($file in $autopilotFiles) {
+    if (-not (Test-Path -Path $file -PathType Leaf)) {
+        throw "$file not found"
+    }
+    Copy-Item -Path $file -Destination "W:\Autopilot" -Force
 }
+$autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
+$SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
+New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
+Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 # powershell -command { Start-Process -FilePath "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File ""C:\Autopilot\Register-Autopilot.ps1""" -WindowStyle Hidden }
-#Copy DISM log to USBDrive
 WriteLog "Copying dism log to $LogFileDir"
 Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"
@@ -939,16 +941,5 @@ Invoke-Process bcdedit.exe "/set {fwbootmgr} displayorder {bootmgr} /addfirst"
 WriteLog "Setting default Windows boot loader to be first in the display order"
 Write-Host "Setting default Windows boot loader to be first in the display order" -ForegroundColor Yellow
 Invoke-Process bcdedit.exe "/set {bootmgr} displayorder {default} /addfirst"
-<#
-Get-Partition -DiskNumber $DiskID | Where-Object { $_.Type -eq 'SYSTEM'} | Set-Partition -NewDriveLetter 'S'
-Copy-Item -Path "S:\EFI\Microsoft\Boot\bootmgfw.efi" -Destination "S:\EFI\Boot\bootx64.efi" -Force
-if ($computerManufacturer -eq "Dell Inc.") {
-    $bootSequence = Get-ChildItem -Path "DellSmbios:\BootSequence\BootSequence" | Select-Object -ExpandProperty CurrentValue
-    $hddDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -like 'hdd*' }).DeviceNumber
-    $otherDeviceNumbers = ($bootSequence | Where-Object { $_.shortform -notlike 'hdd*' }).DeviceNumber
-    $combinedSequence = ($hddDeviceNumbers + $otherDeviceNumbers) -join ','
-    Write-Host "Combined boot sequence is $combinedSequence" -ForegroundColor Yellow
-    Set-Item -Path 'DellSmbios:\BootSequence\BootSequence' $combinedSequence
-}
-#>
+# Copy-Item -Path "S:\EFI\Microsoft\Boot\bootmgfw.efi" -Destination "S:\EFI\Boot\bootx64.efi" -Force
 Restart-Computer -Force
