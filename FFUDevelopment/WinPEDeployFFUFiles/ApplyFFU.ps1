@@ -221,10 +221,12 @@ function Optimize-BIOSSettings {
         [string]$ComputerManufacturer
     )
     if ($ComputerManufacturer -eq "Dell Inc.") {
+        Write-Host "Configuring BIOS settings...`n" -ForegroundColor Yellow
         Write-Host "Importing DellBIOSProvider module..." -ForegroundColor Yellow
         Import-Module DellBIOSProvider -ErrorAction SilentlyContinue | Out-Null
         Write-Host "DellBIOSProvider module is imported`n" -ForegroundColor Green
         Optimize-DellBIOSSettings
+        Write-Host "`nConfiguring BIOS settings complete" -ForegroundColor Green
     }
 }
 
@@ -759,9 +761,7 @@ $computerManufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufa
 $model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
 Write-Host "`nComputer manufacturer is $computerManufacturer" -ForegroundColor Yellow
 Write-Host "Computer model is $model`n" -ForegroundColor Yellow
-Write-Host "Configuring BIOS settings...`n" -ForegroundColor Yellow
 Optimize-BIOSSettings -ComputerManufacturer $computerManufacturer
-Write-Host "`nConfiguring BIOS settings complete" -ForegroundColor Green
 Writelog 'Clean Disk'
 Write-Host "`nCleaning disk" -ForegroundColor Yellow
 try {
@@ -824,13 +824,11 @@ elseif ($LASTEXITCODE -eq 1393) {
     elseif ($BytesPerSector -eq 512) {
         WriteLog "This FFU was likely built with a LogicalSectorByteSize of 4096. Rebuild the FFU by adding -LogicalSectorByteSize 512 to the command line"
     }
-    #Copy DISM log to USBDrive
     Invoke-Process xcopy.exe "X:\Windows\logs\dism\dism.log $USBDrive /Y"
     exit
 }
 else {
     Writelog "Failed to apply FFU - LastExitCode = $LASTEXITCODE also check dism.log on the USB drive for more info"
-    #Copy DISM log to USBDrive
     Invoke-Process xcopy.exe "X:\Windows\logs\dism\dism.log $USBDrive /Y"
     exit
 }

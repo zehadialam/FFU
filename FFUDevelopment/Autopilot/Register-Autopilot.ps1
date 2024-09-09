@@ -1,30 +1,48 @@
-# Register-Autopilot.ps1
-#
-# .SYNOPSIS
-#   Registers a device with Windows Autopilot.
-#
-# .DESCRIPTION
-#   This script automates the process of registering a device with Windows Autopilot and assigning it 
-#   to the appropriate security group based on the specified group tag. It will delete any existing
-#   Intune, Entra, and Autopilot record for the device if they exist in the tenant.
-#
-# .PARAMETER GroupTag
-#   The group tag to assign to the device in Autopilot.
-#
-# .PARAMETER Assign
-#   Whether to wait for the Autopilot profile to be assigned. Defaults to $true.
-#
-# .PARAMETER Sysprep
-#   Whether to sysprep the device after Autopilot registration. Defaults to $true.
-#
-# .EXAMPLE
-#   .\Register-Autopilot.ps1 -GroupTag "Sales"
+#Requires -PSEdition Desktop
+#Requires -Version 5.1
+#Requires -RunAsAdministrator
+
+<#
+ .SYNOPSIS
+   A PowerShell script to register a device with Windows Autopilot.
+
+ .DESCRIPTION
+   This script automates the process of registering a device with Windows Autopilot and assigning it 
+   to the appropriate security group based on the specified group tag. It will delete any existing
+   Intune, Entra, and Autopilot record for the device if they exist in the tenant.
+
+ .PARAMETER GroupTag
+   The group tag to assign to the device in Autopilot.
+
+ .PARAMETER Assign
+   Whether to wait for the Autopilot profile to be assigned. Defaults to $true.
+
+ .PARAMETER Sysprep
+   Whether to sysprep the device after Autopilot registration. Defaults to $true.
+
+ .NOTES
+   Author: Zehadi Alam
+
+ .EXAMPLE
+   .\Register-Autopilot.ps1 -GroupTag "Sales"
+
+ .EXAMPLE
+   .\Register-Autopilot.ps1 -GroupTag "Sales" -Assign $false
+
+ .EXAMPLE
+   .\Register-Autopilot.ps1 -GroupTag "Sales" -Sysprep $false
+
+ .EXAMPLE
+   .\Register-Autopilot.ps1 -GroupTag "Sales" -Assign $false -Sysprep $false
+#>
 
 param (
     [string]$GroupTag,
     [bool]$Assign = $true,
     [bool]$Sysprep = $true
 )
+
+#region Functions 
 
 function Install-RequiredModules {
     if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
@@ -44,7 +62,7 @@ function Install-RequiredModules {
             Install-Module -Name $module -Force -Confirm:$false -AllowClobber -Scope CurrentUser -WarningAction SilentlyContinue
             Write-Host "$module module is installed." -ForegroundColor Green
             Write-Host "Importing $module module..." -ForegroundColor Yellow
-            Import-Module -Name $module -Force -NoClobber -WarningAction SilentlyContinue
+            Import-Module -Name $module -Force -Global -NoClobber -WarningAction SilentlyContinue
             Write-Host "$module module is imported" -ForegroundColor Green
         }
     }
@@ -52,6 +70,8 @@ function Install-RequiredModules {
 
 function Get-AzureAdDeviceId {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     $intuneDevice = Get-MgDeviceManagementManagedDevice -Filter "serialNumber eq '$SerialNumber'" -ErrorAction Stop
@@ -63,6 +83,8 @@ function Get-AzureAdDeviceId {
 
 function Remove-IntuneDeviceRecord {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     Write-Host "Checking if device already exists in Intune..." -ForegroundColor Yellow
@@ -78,6 +100,8 @@ function Remove-IntuneDeviceRecord {
 
 function Remove-AutopilotDeviceRecord {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     Write-Host "Checking if device is already registered with Autopilot..." -ForegroundColor Yellow
@@ -100,7 +124,12 @@ function Remove-AutopilotDeviceRecord {
 
 function Remove-EntraDeviceRecord {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$ComputerName,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     Write-Host "Checking if device already exists in Entra..." -ForegroundColor Yellow
@@ -139,6 +168,8 @@ function Remove-EntraDeviceRecord {
 
 function Add-AutopilotDeviceRecord {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber,
         [string]$GroupTag
     )
@@ -153,7 +184,10 @@ function Add-AutopilotDeviceRecord {
     }
     elseif ($autopilotDevice.GroupTag -ne $GroupTag) {
         Write-Host "Assigning the group tag $GroupTag to the device...`n" -ForegroundColor Yellow
-        Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
+        # Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
+        $body = ConvertTo-Json -InputObject @{ "GroupTag" = "$GroupTag" }
+        $uri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$($autopilotDevice.Id)/UpdateDeviceProperties"
+        Invoke-MgGraphRequest -Uri $uri -Method POST -Body $body
     }
     else {
         Write-Host "Device is registered with Autopilot." -ForegroundColor Green
@@ -162,6 +196,8 @@ function Add-AutopilotDeviceRecord {
 
 function Wait-AutopilotAndEntraDeviceRecords {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     do {
@@ -184,6 +220,8 @@ function Wait-AutopilotAndEntraDeviceRecords {
 
 function Add-SecurityGroupMember {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
@@ -221,6 +259,8 @@ function Add-SecurityGroupMember {
 
 function Wait-AutopilotProfileAssignment {
     param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
     if (-not $Assign) {
@@ -252,6 +292,10 @@ function New-CleanupScheduledTask {
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Priority 0
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
 }
+
+#endregion
+
+#region Main
 
 try {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -294,3 +338,5 @@ catch {
 finally {
     Disconnect-MgGraph | Out-Null
 }
+
+#endregion
