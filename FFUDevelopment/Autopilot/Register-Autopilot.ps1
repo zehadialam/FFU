@@ -51,10 +51,11 @@ function Install-RequiredModules {
         Write-Host "NuGet is installed." -ForegroundColor Green
     }
     $modules = @(
+        "Microsoft.Graph.Beta.DeviceManagement.Enrollment",
         "Microsoft.Graph.DeviceManagement",
+        "Microsoft.Graph.DeviceManagement.Actions",
         "Microsoft.Graph.DeviceManagement.Enrollment",
-        "Microsoft.Graph.Identity.DirectoryManagement",
-        "WindowsAutopilotIntune"
+        "Microsoft.Graph.Identity.DirectoryManagement"
     )
     foreach ($module in $modules) {
         if (-not (Get-InstalledModule -Name $module -ErrorAction SilentlyContinue)) {
@@ -70,7 +71,7 @@ function Install-RequiredModules {
 
 function Get-AzureAdDeviceId {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -83,7 +84,7 @@ function Get-AzureAdDeviceId {
 
 function Remove-IntuneDeviceRecord {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -100,7 +101,7 @@ function Remove-IntuneDeviceRecord {
 
 function Remove-AutopilotDeviceRecord {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -124,11 +125,11 @@ function Remove-AutopilotDeviceRecord {
 
 function Remove-EntraDeviceRecord {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$ComputerName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -168,26 +169,33 @@ function Remove-EntraDeviceRecord {
 
 function Add-AutopilotDeviceRecord {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber,
-        [string]$GroupTag
+        [string]$GroupTag,
+        [byte[]]$HardwareIdentifier
     )
     Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
     $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
     if (-not $autopilotDevice) {
         Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag...`n" -ForegroundColor Yellow
-        if (-not (Get-InstalledScript -Name Get-WindowsAutopilotInfo -ErrorAction SilentlyContinue)) {
-            Install-Script -Name Get-WindowsAutopilotInfo -Force -Confirm:$false -Scope CurrentUser
-        }
-        Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag
+        $hardwareIdentifierInputFile = Join-Path -Path $env:TEMP -ChildPath "devicehardwaredata.txt"
+        [System.IO.File]::WriteAllBytes($hardwareIdentifierInputFile, $HardwareIdentifier)
+        New-MgDeviceManagementImportedWindowsAutopilotDeviceIdentity -GroupTag $GroupTag -HardwareIdentifierInputFile $hardwareIdentifierInputFile -SerialNumber $SerialNumber
+        Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotSettings/sync" -Method POST -ErrorAction SilentlyContinue
+        Remove-Item -Path $hardwareIdentifierInputFile -Force
+        do {
+            $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
+            if (-not $autopilotDevice) {
+                Write-Host "Waiting until Autopilot device record is detected..." -ForegroundColor Yellow
+                Start-Sleep -Seconds 30
+            }
+        } until ($autopilotDevice)
+        Write-Host "Found device in Autopilot." -ForegroundColor Green
     }
     elseif ($autopilotDevice.GroupTag -ne $GroupTag) {
         Write-Host "Assigning the group tag $GroupTag to the device...`n" -ForegroundColor Yellow
-        # Set-AutopilotDevice -Id $autopilotDevice.Id -GroupTag $GroupTag
-        $body = ConvertTo-Json -InputObject @{ "GroupTag" = "$GroupTag" }
-        $uri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities/$($autopilotDevice.Id)/UpdateDeviceProperties"
-        Invoke-MgGraphRequest -Uri $uri -Method POST -Body $body
+        Update-MgDeviceManagementWindowsAutopilotDeviceIdentityDeviceProperty -WindowsAutopilotDeviceIdentityId $autopilotDevice.Id -GroupTag $GroupTag -ErrorAction Stop
     }
     else {
         Write-Host "Device is registered with Autopilot." -ForegroundColor Green
@@ -196,7 +204,7 @@ function Add-AutopilotDeviceRecord {
 
 function Wait-AutopilotAndEntraDeviceRecords {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -220,7 +228,7 @@ function Wait-AutopilotAndEntraDeviceRecords {
 
 function Add-SecurityGroupMember {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -259,7 +267,7 @@ function Add-SecurityGroupMember {
 
 function Wait-AutopilotProfileAssignment {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
@@ -267,15 +275,16 @@ function Wait-AutopilotProfileAssignment {
         return 
     }
     do {
-        $profileAssigned = (Get-AutopilotDevice -Serial $serialNumber).DeploymentProfileAssignmentStatus
-        if ($profileAssigned -notlike "assigned*") {
-            Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssigned" -ForegroundColor Yellow
+        $autopilotDevice = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
+        $profileAssignmentStatus = $autopilotDevice.DeploymentProfileAssignmentStatus
+        if (-not ($profileAssignmentStatus.StartsWith("assigned"))) {
+            Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssignmentStatus" -ForegroundColor Yellow
             Start-Sleep -Seconds 30
         }
         else {
             Write-Host "Autopilot profile is assigned." -ForegroundColor Green
         }
-    } while ($profileAssigned -notlike "assigned*")
+    } until ($profileAssignmentStatus.StartsWith("assigned"))
 }
 
 function New-CleanupScheduledTask {
@@ -316,13 +325,21 @@ try {
     
     Connect-MgGraph -Scopes $scopes -NoWelcome
 
+    $manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
+    $model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
     $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
     $computerName = $env:COMPUTERNAME
-    Write-Host "`nDevice serial number is $serialNumber" -ForegroundColor Yellow
+    $deviceHardwareData = (Get-CimInstance -Namespace root/cimv2/mdm/dmmap -Class MDM_DevDetail_Ext01 -Filter "InstanceID='Ext' AND ParentID='./DevDetail'").DeviceHardwareData
+    $hardwareIdentifier = [System.Convert]::FromBase64String($deviceHardwareData)
+    
+    Write-Host "`nDevice manufacturer is $manufacturer" -ForegroundColor Yellow
+    Write-Host "Device model is $model" -ForegroundColor Yellow
+    Write-Host "Device serial number is $serialNumber" -ForegroundColor Yellow
+    Write-Host "Device name is $computerName" -ForegroundColor Yellow
 
     Remove-IntuneDeviceRecord -SerialNumber $serialNumber
     Remove-EntraDeviceRecord -ComputerName $computerName -SerialNumber $serialNumber
-    Add-AutopilotDeviceRecord -SerialNumber $serialNumber -GroupTag $GroupTag
+    Add-AutopilotDeviceRecord -SerialNumber $serialNumber -GroupTag $GroupTag -HardwareIdentifier $hardwareIdentifier
     Wait-AutopilotAndEntraDeviceRecords -SerialNumber $serialNumber
     Add-SecurityGroupMember -SerialNumber $serialNumber
     Wait-AutopilotProfileAssignment -SerialNumber $serialNumber
