@@ -93,10 +93,10 @@ function New-PEMedia {
     }
 
     WriteLog "Copying WinPE files to $WinPEFFUPath"
-    if($WindowsArch -eq 'x64') {
+    if ($WindowsArch -eq 'x64') {
         & cmd /c """$DandIEnv"" && copype amd64 $WinPEFFUPath" | Out-Null
     }
-    elseif($WindowsArch -eq 'arm64') {
+    elseif ($WindowsArch -eq 'arm64') {
         & cmd /c """$DandIEnv"" && copype arm64 $WinPEFFUPath" | Out-Null
     }
     #Invoke-Process cmd "/c ""$DandIEnv"" && copype amd64 $WinPEFFUPath"
@@ -121,10 +121,10 @@ function New-PEMedia {
         "en-us\WinPE-DismCmdlets_en-us.cab"
     )
 
-    if($WindowsArch -eq 'x64'){
+    if ($WindowsArch -eq 'x64') {
         $PackagePathBase = "$adkPath`Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\"
     }
-    elseif($WindowsArch -eq 'arm64'){
+    elseif ($WindowsArch -eq 'arm64') {
         $PackagePathBase = "$adkPath`Assessment and Deployment Kit\Windows Preinstallation Environment\arm64\WinPE_OCs\"
     }
     
@@ -178,19 +178,19 @@ function New-PEMedia {
     $OSCDIMG = "$OSCDIMGPath\oscdimg.exe"
     WriteLog "Creating WinPE ISO at $WinPEISOFile"
     # & "$OSCDIMG" -m -o -u2 -udfver102 -bootdata:2`#p0,e,b$OSCDIMGPath\etfsboot.com`#pEF,e,b$OSCDIMGPath\Efisys_noprompt.bin $WinPEFFUPath\media $FFUDevelopmentPath\$WinPEISOName | Out-null
-    if($WindowsArch -eq 'x64'){
-        if($Capture){
+    if ($WindowsArch -eq 'x64') {
+        if ($Capture) {
             $OSCDIMGArgs = "-m -o -u2 -udfver102 -bootdata:2`#p0,e,b`"$OSCDIMGPath\etfsboot.com`"`#pEF,e,b`"$OSCDIMGPath\Efisys_noprompt.bin`" `"$WinPEFFUPath\media`" `"$WinPEISOFile`""
         }
-        if($Deploy){
+        if ($Deploy) {
             $OSCDIMGArgs = "-m -o -u2 -udfver102 -bootdata:2`#p0,e,b`"$OSCDIMGPath\etfsboot.com`"`#pEF,e,b`"$OSCDIMGPath\Efisys.bin`" `"$WinPEFFUPath\media`" `"$WinPEISOFile`""
         }
     }
-    elseif($WindowsArch -eq 'arm64'){
-        if($Capture){
+    elseif ($WindowsArch -eq 'arm64') {
+        if ($Capture) {
             $OSCDIMGArgs = "-m -o -u2 -udfver102 -bootdata:1`#pEF,e,b`"$OSCDIMGPath\Efisys_noprompt.bin`" `"$WinPEFFUPath\media`" `"$WinPEISOFile`""
         }
-        if($Deploy){
+        if ($Deploy) {
             $OSCDIMGArgs = "-m -o -u2 -udfver102 -bootdata:1`#pEF,e,b`"$OSCDIMGPath\Efisys.bin`" `"$WinPEFFUPath\media`" `"$WinPEISOFile`""
         }
         
@@ -201,9 +201,9 @@ function New-PEMedia {
     Remove-Item -Path "$WinPEFFUPath" -Recurse -Force
     WriteLog 'Cleanup complete'
 }
-if($Capture){
+if ($Capture) {
     New-PEMedia -Capture $Capture
 }
-if($Deploy){
+if ($Deploy) {
     New-PEMedia -Deploy $Deploy
 }
