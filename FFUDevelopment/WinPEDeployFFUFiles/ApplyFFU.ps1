@@ -443,6 +443,11 @@ $version = '2408.1'
 WriteLog 'Begin Logging'
 WriteLog "Script version: $version"
 $hardDrive = Get-HardDrive
+if($hardDrive -eq $null){
+    WriteLog 'No hard drive found. Exiting'
+    WriteLog 'Try adding storage drivers to the PE boot image (you can re-create your FFU and USB drive and add the PE drivers to the PEDrivers folder and add -CopyPEDrivers $true to the command line, or manually add them via DISM)'
+    Exit
+}
 $PhysicalDeviceID = $hardDrive.DeviceID
 $BytesPerSector = $hardDrive.BytesPerSector
 WriteLog "Physical BytesPerSector is $BytesPerSector"
