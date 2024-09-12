@@ -169,11 +169,11 @@ function Remove-EntraDeviceRecord {
 
 function Add-AutopilotDeviceRecord {
     param (
+        [byte[]]$HardwareIdentifier,
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber,
-        [string]$GroupTag,
-        [byte[]]$HardwareIdentifier
+        [string]$GroupTag
     )
     Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
     $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
@@ -339,7 +339,7 @@ try {
 
     Remove-IntuneDeviceRecord -SerialNumber $serialNumber
     Remove-EntraDeviceRecord -ComputerName $computerName -SerialNumber $serialNumber
-    Add-AutopilotDeviceRecord -SerialNumber $serialNumber -GroupTag $GroupTag -HardwareIdentifier $hardwareIdentifier
+    Add-AutopilotDeviceRecord -HardwareIdentifier $hardwareIdentifier -SerialNumber $serialNumber -GroupTag $GroupTag
     Wait-AutopilotAndEntraDeviceRecords -SerialNumber $serialNumber
     Add-SecurityGroupMember -SerialNumber $serialNumber
     Wait-AutopilotProfileAssignment -SerialNumber $serialNumber

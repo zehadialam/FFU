@@ -10,10 +10,11 @@ This repo is a fork of [rbalsleyMSFT](https://github.com/rbalsleymsft/FFU)'s FFU
 The goal of this project is to provide a comprehensive Windows deployment solution using modern methods. This includes automating the process of building, capturing, and deploying a custom Windows image. As images quickly become out-of-date, maintaining or recreating them can become burdensome. Having an automated solution allows for any individual to quickly rebuild an up-to-date image. To broadly summarize, running the project will download Windows media from Microsoft, apply it to a VHDX file, and run it in a Hyper-V VM to install applications and apply customizations. Windows will then be [sysprepped](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/sysprep--generalize--a-windows-installation?view=windows-11), and once the VM shuts down, the FFU will be captured from the VHDX. The project can optionally prepare a deployment USB drive and copy the FFU, drivers, [provisioning packages](https://learn.microsoft.com/en-us/windows/configuration/provisioning-packages/provisioning-create-package), [Autopilot configuration files](https://learn.microsoft.com/en-us/autopilot/existing-devices), and other necessary components. Once the USB drive is booted into on a target device, the FFU will be applied to the drive automatically.
 
 ## Parent Project Contributions
-I am a contributor to the [parent project](https://github.com/rbalsleymsft/FFU). My contributions include the following feature additions:
+My contributions to the [parent project](https://github.com/rbalsleymsft/FFU) include the following feature additions:
 - Automated the download and installation of the Windows ADK to eliminate a manual project prerequisite. [PR 14](https://github.com/rbalsleyMSFT/FFU/pull/14)
 - Automated the upgrade of an existing ADK installation to the latest version and added more robust handling of various ADK scenarios. [PR 18](https://github.com/rbalsleyMSFT/FFU/pull/18)
 - Added procedures and optimizations to reduce the size of the captured FFU. [PR 25](https://github.com/rbalsleyMSFT/FFU/pull/25)
+- Added WinGet support. [PR 32](https://github.com/rbalsleyMSFT/FFU/pull/32), [PR 33](https://github.com/rbalsleyMSFT/FFU/pull/33), [PR 34](https://github.com/rbalsleyMSFT/FFU/pull/34), [PR 38](https://github.com/rbalsleyMSFT/FFU/pull/38)
 
 All contributions to the parent project are included in this fork. This repo also remains in sync with the latest updates from the parent project.
 
@@ -25,6 +26,7 @@ This fork contains unique functionality that would detract from either the goals
 - Configuring the taskbar layout with pinned apps
 - Configuring the public desktop
 - Configuring various group policy settings that are desirable in enterprise/education environments
+- Support for configuring computer names longer than 15 characters
 
 ## Prerequisites
 
