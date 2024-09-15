@@ -933,7 +933,7 @@ Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupComp
 WriteLog "Copying dism log to $LogFileDir"
 Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"
-if (Test-Path -Path "X:\Flash64.log" -PathType Leaf) {
+if (Test-Path -Path "X:\Flash64W.log" -PathType Leaf) {
     WriteLog "Copying Flash64W log to $LogFileDir"
     Invoke-Process xcopy "x:\Flash64W.log $LogFileDir /Y"
     WriteLog "Copying Flash64W log to $LogFileDir succeeeded"

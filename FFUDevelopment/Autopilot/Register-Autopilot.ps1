@@ -45,7 +45,7 @@ param (
 #region Functions 
 
 function Install-RequiredModules {
-    if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+    if (-not (Get-PackageProvider -Name NuGet -Force -ErrorAction SilentlyContinue)) {
         Write-Host "Installing NuGet..." -ForegroundColor Yellow
         Install-PackageProvider -Name NuGet -Force -Confirm:$false | Out-Null
         Write-Host "NuGet is installed." -ForegroundColor Green
@@ -55,6 +55,7 @@ function Install-RequiredModules {
         "Microsoft.Graph.DeviceManagement",
         "Microsoft.Graph.DeviceManagement.Actions",
         "Microsoft.Graph.DeviceManagement.Enrollment",
+        "Microsoft.Graph.Groups",
         "Microsoft.Graph.Identity.DirectoryManagement"
     )
     foreach ($module in $modules) {
@@ -148,6 +149,7 @@ function Remove-EntraDeviceRecord {
     Write-Host "Found device in Entra with the name $computerName. Checking if device record needs deletion..." -ForegroundColor Yellow
     foreach ($entraDevice in $entraDeviceResult) {
         $enrollmentType = $entraDevice.EnrollmentType
+        # AzureADJoinUsingWhiteGlove
         if ($enrollmentType -eq "AzureDomainJoined") {
             Write-Host "Device enrollment type is $enrollmentType and does not require deletion." -ForegroundColor Green
             continue
@@ -178,16 +180,15 @@ function Add-AutopilotDeviceRecord {
     Write-Host "`nQuerying device with Autopilot..." -ForegroundColor Yellow
     $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
     if (-not $autopilotDevice) {
-        Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag...`n" -ForegroundColor Yellow
+        Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag..." -ForegroundColor Yellow
         $hardwareIdentifierInputFile = Join-Path -Path $env:TEMP -ChildPath "devicehardwaredata.txt"
         [System.IO.File]::WriteAllBytes($hardwareIdentifierInputFile, $HardwareIdentifier)
-        New-MgDeviceManagementImportedWindowsAutopilotDeviceIdentity -GroupTag $GroupTag -HardwareIdentifierInputFile $hardwareIdentifierInputFile -SerialNumber $SerialNumber
-        Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotSettings/sync" -Method POST -ErrorAction SilentlyContinue
+        New-MgDeviceManagementImportedWindowsAutopilotDeviceIdentity -GroupTag $GroupTag -HardwareIdentifierInputFile $hardwareIdentifierInputFile -SerialNumber $SerialNumber | Out-Null
         Remove-Item -Path $hardwareIdentifierInputFile -Force
         do {
             $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
             if (-not $autopilotDevice) {
-                Write-Host "Waiting until Autopilot device record is detected..." -ForegroundColor Yellow
+                Write-Host "Waiting until Autopilot device record is found..." -ForegroundColor Yellow
                 Start-Sleep -Seconds 30
             }
         } until ($autopilotDevice)
@@ -202,24 +203,20 @@ function Add-AutopilotDeviceRecord {
     }
 }
 
-function Wait-AutopilotAndEntraDeviceRecords {
+function Wait-EntraDeviceRecord {
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber
     )
-    do {
-        $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction SilentlyContinue
-        if (-not $autopilotDevice) {
-            Write-Host "Waiting until Autopilot device record is detected..." -ForegroundColor Yellow
-            Start-Sleep -Seconds 10
-        }
-    } while (-not $autopilotDevice)
-    Write-Host "Found device in Autopilot." -ForegroundColor Green
+    $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction SilentlyContinue
+    if (-not $autopilotDevice) {
+        throw "Autopilot device not found"
+    }
     do {
         $entraDevice = Get-MgDevice -Filter "DeviceId eq '$($autopilotdevice.azureActiveDirectoryDeviceId)'" -ErrorAction Stop
         if (-not $entraDevice) {
-            Write-Host "Waiting until Entra device corresponding to Autopilot record is detected..." -ForegroundColor Yellow
+            Write-Host "Waiting until Entra device corresponding to Autopilot record is found..." -ForegroundColor Yellow
             Start-Sleep -Seconds 10
         }
     } while (-not $entraDevice)
@@ -276,7 +273,7 @@ function Wait-AutopilotProfileAssignment {
     }
     do {
         $autopilotDevice = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
-        $profileAssignmentStatus = $autopilotDevice.DeploymentProfileAssignmentStatus
+        $profileAssignmentStatus = $autopilotDevice.DeploymentProfileAssignmentStatus -as [string]
         if (-not ($profileAssignmentStatus.StartsWith("assigned"))) {
             Write-Host "Waiting for Autopilot profile to be assigned. Current assignment status is: $profileAssignmentStatus" -ForegroundColor Yellow
             Start-Sleep -Seconds 30
@@ -340,7 +337,7 @@ try {
     Remove-IntuneDeviceRecord -SerialNumber $serialNumber
     Remove-EntraDeviceRecord -ComputerName $computerName -SerialNumber $serialNumber
     Add-AutopilotDeviceRecord -HardwareIdentifier $hardwareIdentifier -SerialNumber $serialNumber -GroupTag $GroupTag
-    Wait-AutopilotAndEntraDeviceRecords -SerialNumber $serialNumber
+    Wait-EntraDeviceRecord -SerialNumber $serialNumber
     Add-SecurityGroupMember -SerialNumber $serialNumber
     Wait-AutopilotProfileAssignment -SerialNumber $serialNumber
 
