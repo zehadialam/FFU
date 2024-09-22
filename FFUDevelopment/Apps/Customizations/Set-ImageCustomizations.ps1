@@ -67,41 +67,13 @@ function Set-RegistrySetting {
 }
 
 function Set-PolicySettings {
-    # Start Layout
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Explorer" -RegValueName "StartLayoutFile" -RegValueType String -RegValueData "C:\Windows\ITAdmin\taskbarlayout.xml"
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Explorer" -RegValueName "LockedStartLayout" -RegValueType DWORD -RegValueData 1
-    # Enable periodic registry backups
-    Set-RegistrySetting -RegPath "HKLM:\System\CurrentControlSet\Control\Session Manager\Configuration Manager" -RegValueName "EnablePeriodicBackup" -RegValueType DWORD -RegValueData 1
-    # Enable long paths
-    Set-RegistrySetting -RegPath "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -RegValueName "LongPathsEnabled" -RegValueType DWORD -RegValueData 1
-    # Configures the Chat icon on the taskbar
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Windows Chat" -RegValueName "ChatIcon" -RegValueType DWORD -RegValueData 3
-    # Disable widgets
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Dsh" -RegValueName "AllowNewsAndInterests" -RegValueType DWORD -RegValueData 0
-    # Do not show Windows tips
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\CloudContent" -RegValueName "DisableSoftLanding" -RegValueType DWORD -RegValueData 1
-    # Turn off cloud consumer account state content
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\CloudContent" -RegValueName "DisableConsumerAccountStateContent" -RegValueType DWORD -RegValueData 1
-    # Turn off Microsoft consumer experiences
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\CloudContent" -RegValueName "DisableWindowsConsumerFeatures" -RegValueType DWORD -RegValueData 1
-    # Set lock screen
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Personalization" -RegValueName "LockScreenImage" -RegValueType String -RegValueData "C:\Windows\Web\Screen\lockscreen.jpg"
-    # Allow changing lock screen and logon image
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Personalization" -RegValueName "NoChangingLockScreen" -RegValueType DWORD -RegValueData 0
-    # Turn off fun facts, tips, tricks, and more on lock screen
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Windows\Personalization" -RegValueName "LockScreenOverlaysDisabled" -RegValueType DWORD -RegValueData 1
-    # Use Windows Hello for Business
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\PassportForWork" -RegValueName "Enabled" -RegValueType DWORD -RegValueData 1
-    # Do not start Windows Hello provisioning after sign-in
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\PassportForWork" -RegValueName "DisablePostLogonProvisioning" -RegValueType DWORD -RegValueData 1
-    # Require a password when a computer wakes (plugged in)
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51" -RegValueName "ACSettingIndex" -RegValueType DWORD -RegValueData 1
-    # Require a Password When a Computer Wakes (On Battery)
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51" -RegValueName "DCSettingIndex" -RegValueType DWORD -RegValueData 1
-    # Turn off the display (plugged in)
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Power\PowerSettings\3C0BC021-C8A8-4E07-A973-6B14CBCB2B7E" -RegValueName "ACSettingIndex" -RegValueType DWORD -RegValueData 0
-    # Specify the system sleep timeout (plugged in)
-    Set-RegistrySetting -RegPath "HKLM:\Software\Policies\Microsoft\Power\PowerSettings\29F6C1DB-86DA-48C5-9FDB-F2B67B1F44DA" -RegValueName "ACSettingIndex" -RegValueType DWORD -RegValueData 0
+    param (
+        [string]$SettingsFile
+    )
+    $settings = Get-Content -Path $SettingsFile | ConvertFrom-Json
+    foreach ($setting in $settings.RegistrySettings) {
+        Set-RegistrySetting -RegPath $setting.RegPath -RegValueName $setting.RegValueName -RegValueType $setting.RegValueType -RegValueData $setting.RegValueData
+    }
 }
 
 function Build-InternetShortcut {
@@ -151,5 +123,5 @@ Copy-CustomizationFile -SourcePath "$customizationsFolder\lockscreen.jpg" -Desti
 # https://learn.microsoft.com/en-us/windows/win32/controls/themesfileformat-overview
 # https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/set-dark-mode
 Copy-CustomizationFile -SourcePath "$customizationsFolder\oem.theme" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
-Set-PolicySettings
+Set-PolicySettings -SettingsFile "D:\Customizations\RegistrySettings.json"
 Set-PublicDesktopContents
