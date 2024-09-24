@@ -1,0 +1,59 @@
+{
+    "apps": [
+        {
+            "name": "NanaZip",
+            "id": "M2Team.NanaZip",
+            "source": "winget"
+        },
+        {
+            "name": "Company Portal",
+            "id": "9WZDNCRFJ3PZ",
+            "source": "msstore"
+        },
+        {
+            "name": "Microsoft Teams",
+            "id": "Microsoft.Teams",
+            "source": "winget"
+        },
+        {
+            "name": "CrystalDiskInfo",
+            "id": "CrystalDewWorld.CrystalDiskInfo",
+            "source": "winget"
+        },
+        {
+            "name": "Everything",
+            "id": "voidtools.Everything",
+            "source": "winget"
+        },
+        {
+            "name": "Google Chrome",
+            "id": "Google.Chrome",
+            "source": "winget"
+        },
+        {
+            "name": "Mozilla Firefox",
+            "id": "Mozilla.Firefox",
+            "source": "winget"
+        },
+        {
+            "name": "LockHunter",
+            "id": "CrystalRich.LockHunter",
+            "source": "winget"
+        },
+        {
+            "name": "Revo Uninstaller",
+            "id": "RevoUninstaller.RevoUninstaller",
+            "source": "winget"
+        },
+        {
+            "name": "VLC media player",
+            "id": "VideoLAN.VLC",
+            "source": "winget"
+        },
+        {
+            "name": "Zoom Workplace",
+            "id": "Zoom.Zoom",
+            "source": "winget"
+        }
+    ]
+}
