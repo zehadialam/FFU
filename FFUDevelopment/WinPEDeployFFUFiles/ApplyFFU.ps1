@@ -326,6 +326,10 @@ function Update-DellBIOS {
         Write-Host "`nChecking for BIOS update..." -ForegroundColor Yellow
         $computerBiosVersion = Get-MyBiosVersion
         $catalogBiosVersion = (Get-MyDellBios).DellVersion
+        if (-not $catalogBiosVersion) {
+            Write-Host "The latest BIOS version could not be determined. Skipping BIOS update." -ForegroundColor Yellow
+            return
+        }
         if ($computerBiosVersion -eq $catalogBiosVersion) {
             Write-Host "The current BIOS version $computerBiosVersion is the latest." -ForegroundColor Green
             return
@@ -584,7 +588,7 @@ Please select the deployment team:
         $computerName = Read-Host 'Type in the name of the computer'
         $computerName = $computerName -replace "\s", ""
         if ($computerName.Length -gt 15) {
-            $SetupCompleteData += "`nreg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v ""NV Hostname"" /t REG_SZ /d ""$computerName"" /f"
+            $SetupCompleteData += "powershell.exe -Command { Rename-Computer -NewName $computerName -Force }"
             $computerName = $computerName.substring(0, 15)
         }
         $computerName = Set-Computername($computername)
@@ -944,5 +948,4 @@ Invoke-Process bcdedit.exe "/set {fwbootmgr} displayorder {bootmgr} /addfirst"
 WriteLog "Setting default Windows boot loader to be first in the display order"
 Write-Host "Setting default Windows boot loader to be first in the display order" -ForegroundColor Yellow
 Invoke-Process bcdedit.exe "/set {bootmgr} displayorder {default} /addfirst"
-# Copy-Item -Path "S:\EFI\Microsoft\Boot\bootmgfw.efi" -Destination "S:\EFI\Boot\bootx64.efi" -Force
 Restart-Computer -Force
