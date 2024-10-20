@@ -39,6 +39,8 @@ if ($DeployISOPath) {
         $Images = Get-ChildItem -Path $FFUPath -Filter "*.ffu" -File -Recurse
         writelog "Checking if drivers are present in the drivers folder"
         $Drivers = Get-ChildItem -Path $DriversPath -Recurse
+        $Autopilot = Get-ChildItem -Path $AutopilotPath -Recurse
+        $Unattend = Get-ChildItem -Path $UnattendPath -Recurse
         $DrivesCount = $Drives.Count
         Writelog "Creating partitions..."
         foreach ($USBDrive in $Drives) {
@@ -105,6 +107,47 @@ if ($DeployISOPath) {
                 Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $FFUPath, $Destination | Out-Null
             }
         }
+        if ($Autopilot) {
+            foreach ($Drive in $DeployDrives) {
+                WriteLog "Create drivers directory"
+                $drivepath = $Drive + ":\"
+                New-Item -Path "$drivepath" -Name Autopilot -ItemType Directory -Force -Confirm: $false | Out-Null
+            }
+            writelog "Copying Autopilot files to all drives labeled deploy concurrently"
+            foreach ($Drive in $DeployDrives) {
+                $Destination = $Drive + ":\Autopilot"
+                $jobScriptBlock = {
+                    param (
+                        [string]$SFolder,
+                        [string]$DFolder
+                    )
+                    Robocopy $SFolder $DFolder /E /COPYALL /R:5 /W:5 /J
+                }
+
+                WriteLog "Start job to copy all FFU files to $Destination"
+                Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $AutopilotPath, "$Destination" | Out-Null
+            }
+        }
+        if ($Unattend) {
+            foreach ($Drive in $DeployDrives) {
+                WriteLog "Create drivers directory"
+                $drivepath = $Drive + ":\"
+                New-Item -Path "$drivepath" -Name Unattend -ItemType Directory -Force -Confirm: $false | Out-Null
+            }
+            writelog "Copying unattend files to all drives labeled deploy concurrently"
+            foreach ($Drive in $DeployDrives) {
+                $Destination = $Drive + ":\Unattend"
+                $jobScriptBlock = {
+                    param (
+                        [string]$SFolder,
+                        [string]$DFolder
+                    )
+                    Robocopy $SFolder $DFolder /E /COPYALL /R:5 /W:5 /J
+                }
+                WriteLog "Start job to copy all FFU files to $Destination"
+                Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $UnattendPath, "$Destination" | Out-Null
+            }
+        }
         if ($Drivers) {
             writelog "Copying driver files to all drives labeled deploy concurrently"
             foreach ($Drive in $DeployDrives) {
@@ -119,13 +162,6 @@ if ($DeployISOPath) {
                 }
                 WriteLog "Start job to copy all drivers to $Destination"
                 Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $DriversPath, $Destination | Out-Null
-            }
-        }
-        if (!($Drivers)) {
-            foreach ($Drive in $DeployDrives) {
-                WriteLog "Create drivers directory"
-                $drivepath = $Drive + ":\"
-                New-Item -Path "$drivepath" -Name Drivers -ItemType Directory -Force -Confirm: $false | Out-Null
             }
         }
         if ($DrivesCount -gt 1) {
@@ -145,8 +181,9 @@ if ($DeployISOPath) {
             [Array]$Drives,
             [int]$Count,
             [String]$FFUPath = "$DevelopmentPath\FFU",
-            [String]$DriversPath = "$DevelopmentPath\Drivers"
-        
+            [String]$DriversPath = "$DevelopmentPath\Drivers",
+            [String]$AutopilotPath = "$DevelopmentPath\Autopilot",
+            [String]$UnattendPath = "$DevelopmentPath\Unattend"
         )
   
         $Drivelist = @()

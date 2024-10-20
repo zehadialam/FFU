@@ -201,7 +201,7 @@ param(
     [Parameter(Mandatory = $false, Position = 0)]
     [ValidateScript({ Test-Path $_ })]
     [string]$ISOPath,
-    [ValidateSet('Home', 'Home N', 'Home Single Language', 'Education', 'Education N', 'Pro', 'Pro N', 'Pro Education', 'Pro Education N', 'Pro for Workstations', 'Pro N for Workstations', 'Enterprise', 'Enterprise N')]
+    [ValidateSet('Home', 'Home N', 'Home Single Language', 'Education', 'Education N', 'Pro', 'Pro N', 'Pro Education', 'Pro Education N', 'Pro for Workstations', 'Pro N for Workstations', 'Enterprise', 'Enterprise N', 'Enterprise LTSC', 'Enterprise N LTSC')]
     [string]$WindowsSKU = 'Pro',
     [ValidateScript({ Test-Path $_ })]
     [string]$FFUDevelopmentPath = $PSScriptRoot,
@@ -270,7 +270,7 @@ param(
     [ValidateSet(10, 11)]
     [int]$WindowsRelease = 11,
     [Parameter(Mandatory = $false)]
-    [string]$WindowsVersion = '23h2',
+    [string]$WindowsVersion = '24h2',
     [Parameter(Mandatory = $false)]
     [ValidateSet('x86', 'x64', 'arm64')]
     [string]$WindowsArch = 'x64',
@@ -3044,6 +3044,7 @@ Function Get-WindowsVersionInfo {
         Professional { 'Pro' }
         ProfessionalEducation { 'Pro_Edu' }
         Enterprise { 'Ent' }
+        EnterpriseS { 'Ent_LTSC' }
         Education { 'Edu' }
         ProfessionalWorkstation { 'Pro_Wks' }
     }

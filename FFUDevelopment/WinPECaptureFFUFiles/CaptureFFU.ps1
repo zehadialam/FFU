@@ -24,6 +24,7 @@ $SKU = switch ($SKU) {
     ProfessionalEducationN { 'Pro_EduN' }
     Enterprise { 'Ent' }
     EnterpriseN { 'EntN'}
+    EnterpriseS { 'Ent_LTSC' }
     Education { 'Edu' }
     EducationN { 'EduN'}
     ProfessionalWorkstation { 'Pro_Wks' }

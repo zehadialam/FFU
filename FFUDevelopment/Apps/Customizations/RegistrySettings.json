@@ -121,7 +121,7 @@
             "RegValueData": "1"
         },
         {
-            "RegPath": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
+            "RegPath": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer",
             "RegValueName": "DisableEdgeDesktopShortcutCreation",
             "RegValueType": "DWORD",
             "RegValueData": 1

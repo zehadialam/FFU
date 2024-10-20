@@ -330,7 +330,7 @@ function Update-DellBIOS {
             Write-Host "The latest BIOS version could not be determined. Skipping BIOS update." -ForegroundColor Yellow
             return
         }
-        if ($computerBiosVersion -eq $catalogBiosVersion) {
+        if ($computerBiosVersion -ge $catalogBiosVersion) {
             Write-Host "The current BIOS version $computerBiosVersion is the latest." -ForegroundColor Green
             return
         }
@@ -411,6 +411,18 @@ function Install-Drivers {
         }
         else {
             $driverPath = Get-LocalDrivers -Model $model
+            if ($driverPath) {
+                Write-Host "Extracting driver pack to $driverPath..." -ForegroundColor Yellow
+                $driverPackPath = Get-ChildItem -Path "$driverPath\*" -Include "*.exe" -File -ErrorAction Stop
+                if (-not $driverPackPath) {
+                    Write-Host "Driver pack path not found" -ForegroundColor Red
+                    return
+                }
+                Start-Process -FilePath $driverPackPath -ArgumentList "/e=$($driverPath)", "/s" -Wait -NoNewWindow
+                Write-Host "`nInstalling drivers for $model..." -ForegroundColor Yellow
+                Write-Host "`nRunning command DISM /Image:$MountPath /Add-Driver /Driver:""$driverPath"" /Recurse" -ForegroundColor Yellow
+                Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$driverPath""", "/Recurse" -Wait -NoNewWindow
+            }
             if (-not $driverPath) {
                 $driverPath = Get-DownloadedDrivers -ComputerManufacturer $ComputerManufacturer -Model $model
                 if ($ComputerManufacturer -eq "Dell Inc.") {
