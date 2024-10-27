@@ -55,6 +55,12 @@
             "RegValueData": 1
         },
         {
+            "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Windows\\CloudContent",
+            "RegValueName": "DisableCloudOptimizedContent",
+            "RegValueType": "DWORD",
+            "RegValueData": 1
+        },
+        {
             "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Windows\\Personalization",
             "RegValueName": "LockScreenImage",
             "RegValueType": "String",
@@ -131,6 +137,12 @@
             "RegValueName": "CreateDesktopShortcutDefault",
             "RegValueType": "DWORD",
             "RegValueData": 0
+        },
+        {
+            "RegPath": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge",
+            "RegValueName": "HideFirstRunExperience",
+            "RegValueType": "DWORD",
+            "RegValueData": 1
         }
     ]
 }

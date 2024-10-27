@@ -2178,9 +2178,16 @@ function Get-KBLink {
         return
     }
 
+    # $guids = $results.Links |
+    # Where-Object ID -match '_link' |
+    # Where-Object { $_.OuterHTML -match ( "(?=.*" + ( $Filter -join ")(?=.*" ) + ")" ) } |
+    # ForEach-Object { $_.id.replace('_link', '') } |
+    # Where-Object { $_ -in $kbids }
+
     $guids = $results.Links |
     Where-Object ID -match '_link' |
     Where-Object { $_.OuterHTML -match ( "(?=.*" + ( $Filter -join ")(?=.*" ) + ")" ) } |
+    Select-Object -First 1 |
     ForEach-Object { $_.id.replace('_link', '') } |
     Where-Object { $_ -in $kbids }
 
@@ -2190,7 +2197,7 @@ function Get-KBLink {
     }
 
     foreach ($guid in $guids) {
-        Write-Verbose -Message "Downloading information for $guid"
+        # Write-Verbose -Message "Downloading information for $guid"
         $post = @{ size = 0; updateID = $guid; uidInfo = $guid } | ConvertTo-Json -Compress
         $body = @{ updateIDs = "[$post]" }
         $OriginalVerbosePreference = $VerbosePreference
@@ -2252,35 +2259,35 @@ function Save-KB {
         $links = Get-KBLink -Name $kb
         foreach ($link in $links) {
             if (!($link -match 'x64' -or $link -match 'amd64' -or $link -match 'x86' -or $link -match 'arm64')) {
-                WriteLog "No architecture found in $link, assume this is for all architectures"
+                WriteLog "No architecture found in $link, skipping"
                 #FIX: 3/22/2024 - the SecurityHealthSetup fix was updated and now includes two files (one is x64 and the other is arm64)
                 #Unfortunately there is no easy way to determine the architecture from the file name
                 #There is a support doc that include links to download, but it's out of date (n-1)
                 #https://support.microsoft.com/en-us/topic/windows-security-update-a6ac7d2e-b1bf-44c0-a028-41720a242da3
                 #These files don't change that often, so will check the link above to see when it updates and may use that
                 #For now this is hard-coded for these specific file names
-                if ($link -match 'security') {
-                    #Make sure we're getting the correct architecture for the Security Health Setup update
-                    WriteLog "Link: $link matches security"
-                    if ($WindowsArch -eq 'x64') {
-                        if ($link -match 'securityhealthsetup_e1') {
-                            Writelog "Downloading $Link for $WindowsArch to $Path"
-                            Start-BitsTransferWithRetry -Source $link -Destination $Path
-                            $fileName = ($link -split '/')[-1]
-                            Writelog "Returning $fileName"
-                            break
-                        }
-                    }
-                    if ($WindowsArch -eq 'arm64') {
-                        if ($link -match 'securityhealthsetup_25') {
-                            Writelog "Downloading $Link for $WindowsArch to $Path"
-                            Start-BitsTransferWithRetry -Source $link -Destination $Path
-                            $fileName = ($link -split '/')[-1]
-                            Writelog "Returning $fileName"
-                            break
-                        }
-                    }
-                }
+            #     if ($link -match 'security') {
+            #         #Make sure we're getting the correct architecture for the Security Health Setup update
+            #         WriteLog "Link: $link matches security"
+            #         if ($WindowsArch -eq 'x64') {
+            #             if ($link -match 'securityhealthsetup_e1') {
+            #                 Writelog "Downloading $Link for $WindowsArch to $Path"
+            #                 Start-BitsTransferWithRetry -Source $link -Destination $Path
+            #                 $fileName = ($link -split '/')[-1]
+            #                 Writelog "Returning $fileName"
+            #                 break
+            #             }
+            #         }
+            #         if ($WindowsArch -eq 'arm64') {
+            #             if ($link -match 'securityhealthsetup_25') {
+            #                 Writelog "Downloading $Link for $WindowsArch to $Path"
+            #                 Start-BitsTransferWithRetry -Source $link -Destination $Path
+            #                 $fileName = ($link -split '/')[-1]
+            #                 Writelog "Returning $fileName"
+            #                 break
+            #             }
+            #         }
+            #     }
             }
 
             if ($link -match 'x64' -or $link -match 'amd64') {
@@ -2290,7 +2297,8 @@ function Save-KB {
                         Start-BitsTransferWithRetry -Source $link -Destination $Path
                         $fileName = ($link -split '/')[-1]
                         Writelog "Returning $fileName"
-                        break
+                        #With Windows 11 24H2 and Checkpoint CUs, there are multiple files that are downloaded
+                        # break
                     }
                 }
                 
@@ -2301,7 +2309,8 @@ function Save-KB {
                     Start-BitsTransferWithRetry -Source $link -Destination $Path
                     $fileName = ($link -split '/')[-1]
                     Writelog "Returning $fileName"
-                    break
+                    #With Windows 11 24H2 and Checkpoint CUs, there are multiple files that are downloaded
+                    # break
                 }
             }                
         }

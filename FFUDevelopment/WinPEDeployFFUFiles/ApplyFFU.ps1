@@ -642,7 +642,7 @@ Please select the deployment team:
         $computername = ($PrefixToUse + $serial) -replace "\s", "" # Remove spaces because windows does not support spaces in the computer names
         #If computername is longer than 15 characters, reduce to 15. Sysprep/unattend doesn't like ComputerName being longer than 15 characters even though Windows accepts it
         if ($computername.Length -gt 15) {
-            $SetupCompleteData += "`nreg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v ""NV Hostname"" /t REG_SZ /d ""$computerName"" /f"
+            $SetupCompleteData += "powershell.exe -Command { Rename-Computer -NewName $computerName -Force }"
             $computername = $computername.substring(0, 15)
         }
         $computername = Set-Computername($computername)
