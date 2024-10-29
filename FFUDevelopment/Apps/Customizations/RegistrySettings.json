@@ -1,18 +1,6 @@
 {
     "RegistrySettings": [
         {
-            "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Windows\\Explorer",
-            "RegValueName": "StartLayoutFile",
-            "RegValueType": "String",
-            "RegValueData": "C:\\Windows\\ITAdmin\\taskbarlayout.xml"
-        },
-        {
-            "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Windows\\Explorer",
-            "RegValueName": "LockedStartLayout",
-            "RegValueType": "DWORD",
-            "RegValueData": 1
-        },
-        {
             "RegPath": "HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Configuration Manager",
             "RegValueName": "EnablePeriodicBackup",
             "RegValueType": "DWORD",
@@ -50,12 +38,6 @@
         },
         {
             "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Windows\\CloudContent",
-            "RegValueName": "DisableWindowsConsumerFeatures",
-            "RegValueType": "DWORD",
-            "RegValueData": 1
-        },
-        {
-            "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Windows\\CloudContent",
             "RegValueName": "DisableCloudOptimizedContent",
             "RegValueType": "DWORD",
             "RegValueData": 1
@@ -87,18 +69,6 @@
         {
             "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\PassportForWork",
             "RegValueName": "DisablePostLogonProvisioning",
-            "RegValueType": "DWORD",
-            "RegValueData": 1
-        },
-        {
-            "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Power\\PowerSettings\\0e796bdb-100d-47d6-a2d5-f7d2daa51f51",
-            "RegValueName": "ACSettingIndex",
-            "RegValueType": "DWORD",
-            "RegValueData": 1
-        },
-        {
-            "RegPath": "HKLM:\\Software\\Policies\\Microsoft\\Power\\PowerSettings\\0e796bdb-100d-47d6-a2d5-f7d2daa51f51",
-            "RegValueName": "DCSettingIndex",
             "RegValueType": "DWORD",
             "RegValueData": 1
         },

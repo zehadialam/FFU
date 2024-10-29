@@ -919,6 +919,10 @@ if ($computername) {
         throw $_
     }   
 }
+# Apply PPKG
+WriteLog "Applying PPKG to $PhysicalDeviceID"
+WriteLog "Running command DISM /Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\DefaultImageSettings.ppkg"
+DISM /Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\DefaultImageSettings.ppkg
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
 if (Test-Path -Path $Drivers -PathType Container) {

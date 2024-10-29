@@ -6,6 +6,11 @@
             "source": "winget"
         },
         {
+            "name": "Adobe Acrobat Reader DC (64-bit)",
+            "id": "Adobe.Acrobat.Reader.64-bit",
+            "source": "winget"
+        },
+        {
             "name": "Company Portal",
             "id": "9WZDNCRFJ3PZ",
             "source": "msstore"
