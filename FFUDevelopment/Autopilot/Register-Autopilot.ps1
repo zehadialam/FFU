@@ -341,6 +341,9 @@ try {
     Add-SecurityGroupMember -SerialNumber $serialNumber
     Wait-AutopilotProfileAssignment -SerialNumber $serialNumber
 
+    Write-Host "`nActivating Windows..." -ForegroundColor Yellow
+    Start-Process -FilePath "$env:windir\System32\cscript.exe" -ArgumentList "$env:windir\System32\slmgr.vbs /ato" -Wait -NoNewWindow
+
     if ($Sysprep) {
         New-CleanupScheduledTask
         Write-Host "Cleaning up scripts. Device will automatically restart once complete." -ForegroundColor Yellow

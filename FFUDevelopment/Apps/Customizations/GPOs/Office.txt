@@ -1,0 +1,1004 @@
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_addon_management
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_http_username_password_disable
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_localmachine_lockdown
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_handling
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_mime_sniffing
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_object_caching
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_activexinstall
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_restrict_filedownload
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_securityband
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_unc_savedfilecheck
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_validate_navigate_url
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_window_restrictions
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+groove.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+excel.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+mspub.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+powerpnt.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+pptview.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+visio.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+winproj.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+winword.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+outlook.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+spdesign.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+exprwd.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+msaccess.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+onenote.exe
+DWORD:1
+
+Computer
+software\microsoft\internet explorer\main\featurecontrol\feature_zone_elevation
+mse7.exe
+DWORD:1
+
+Computer
+software\microsoft\Office\16.0\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\microsoft\Office\16.0\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\microsoft\Office\16.0\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\microsoft\Office\16.0\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\microsoft\Office\Common\COM Compatibility
+Comment
+SZ:Block all Flash activation
+
+Computer
+software\microsoft\Office\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\microsoft\Office\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\microsoft\Office\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\microsoft\Office\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\policies\microsoft\office\16.0\lync
+disablehttpconnect
+DWORD:1
+
+Computer
+software\policies\microsoft\office\16.0\lync
+enablesiphighsecuritymode
+DWORD:1
+
+Computer
+software\WOW6432Node\Microsoft\Office\16.0\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\WOW6432Node\Microsoft\Office\16.0\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\WOW6432Node\Microsoft\Office\16.0\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\WOW6432Node\Microsoft\Office\16.0\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\WOW6432Node\Microsoft\Office\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\WOW6432Node\Microsoft\Office\Common\COM Compatibility\{D27CDB6E-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024
+
+Computer
+software\WOW6432Node\Microsoft\Office\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+ActivationFilterOverride
+DWORD:0
+
+Computer
+software\WOW6432Node\Microsoft\Office\Common\COM Compatibility\{D27CDB70-AE6D-11CF-96B8-444553540000}
+Compatibility Flags
+DWORD:1024

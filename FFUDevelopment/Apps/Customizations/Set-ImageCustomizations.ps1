@@ -117,21 +117,34 @@ function Set-PublicDesktopContents {
 
 $customizationsFolder = "D:\Customizations"
 Remove-UWPApps
-# Customize taskbar: 
-# https://learn.microsoft.com/en-us/windows/configuration/taskbar/pinned-apps?tabs=intune&pivots=windows-11
-# https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/customize-the-windows-11-taskbar
-# Copy-CustomizationFile -SourcePath "$customizationsFolder\taskbarlayout.xml" -DestinationPath "$env:windir\ITAdmin"
-# Copy-CustomizationFile -SourcePath "$customizationsFolder\AppAssociations.xml" -DestinationPath "$env:windir\ITAdmin"
-# DISM /Online /Export-DefaultAppAssociations:"$env:windir\ITAdmin\AppAssociations.xml"
-# DISM /Online /Import-DefaultAppAssociations:"$env:windir\ITAdmin\AppAssociations.xml"
 # Copy lock screen background
 Copy-CustomizationFile -SourcePath "$customizationsFolder\lockscreen.jpg" -DestinationPath "$env:windir\Web\Screen"
 # Copy theme file to "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
 # https://learn.microsoft.com/en-us/windows/win32/controls/themesfileformat-overview
 # https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/set-dark-mode
 Copy-CustomizationFile -SourcePath "$customizationsFolder\oem.theme" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
-#Copy-CustomizationFile -SourcePath "$customizationsFolder\start2.bin" -DestinationPath "C:\Users\Default\AppData\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\LocalState"
-Set-PolicySettings -SettingsFile "D:\Customizations\RegistrySettings.json"
-reg.exe delete "HKLM\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f
-reg.exe delete "HKLM\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f
+Set-PolicySettings -SettingsFile "$customizationsFolder\RegistrySettings.json"
+$admxFiles = Get-ChildItem -Path "$customizationsFolder\GPOs\*.admx" -Recurse -Force
+$admlFiles = Get-ChildItem -Path "$customizationsFolder\GPOs\*.adml" -Recurse -Force
+if ($admxFiles -and $admlFiles) {
+    foreach ($admxFile in $admxFiles) {
+        Copy-CustomizationFile -SourcePath $admxFile.FullName -DestinationPath "$env:windir\PolicyDefinitions"
+    }
+    foreach ($admlFile in $admlFiles) {
+        Copy-CustomizationFile -SourcePath $admlFile.FullName -DestinationPath "$env:windir\PolicyDefinitions\en-US"
+    }
+}
+$GPOs = Get-ChildItem -Path "$customizationsFolder\GPOs\*.txt" -Recurse -Force
+foreach ($GPO in $GPOs) {
+    Start-Process -FilePath "$customizationsFolder\GPOS\LGPO.exe" -ArgumentList "/t ""$($GPO.FullName)"" /v" -Wait -NoNewWindow
+}
+$keys = @(
+    "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate",
+    "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate"
+)
+foreach ($key in $keys) {
+    if (Test-Path $key) {
+        Remove-Item -Path $key -Force
+    }
+}
 Set-PublicDesktopContents

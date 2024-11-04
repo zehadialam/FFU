@@ -459,7 +459,7 @@ $version = '2408.1'
 WriteLog 'Begin Logging'
 WriteLog "Script version: $version"
 $hardDrive = Get-HardDrive
-if ($hardDrive -eq $null) {
+if (-not $hardDrive) {
     WriteLog 'No hard drive found. Exiting'
     WriteLog 'Try adding storage drivers to the PE boot image (you can re-create your FFU and USB drive and add the PE drivers to the PEDrivers folder and add -CopyPEDrivers $true to the command line, or manually add them via DISM)'
     exit
@@ -604,7 +604,7 @@ Please select the deployment team:
             $computerName = $computerName.substring(0, 15)
         }
         $computerName = Set-Computername($computername)
-        Writelog "Computer name set to $computername"
+        WriteLog "Computer name set to $computername"
     }
     else {
         $UnattendPrefixes = @(Get-content $UnattendPrefixFile)
@@ -797,7 +797,6 @@ catch {
 }
 Writelog 'Cleaning Disk succeeded'
 Write-Host "Cleaning disk successful" -ForegroundColor Green
-#Apply FFU
 WriteLog "Applying FFU to $PhysicalDeviceID"
 WriteLog "Running command dism /apply-ffu /ImageFile:$FFUFileToInstall /ApplyDrive:$PhysicalDeviceID"
 Write-Host "`nRunning command DISM /Apply-FFU /ImageFile:$FFUFileToInstall /ApplyDrive:$PhysicalDeviceID" -ForegroundColor Yellow
@@ -871,7 +870,6 @@ if ($APFileToInstall) {
     WriteLog "Copying $APFileToInstall to W:\windows\provisioning\autopilot"
     Invoke-process xcopy.exe "$APFileToInstall W:\Windows\provisioning\autopilot\"
     WriteLog "Copying $APFileToInstall to W:\windows\provisioning\autopilot succeeded"
-    # Rename file in W:\Windows\Provisioning\Autopilot to AutoPilotConfigurationFile.json
     try {
         Rename-Item -Path "W:\Windows\Provisioning\Autopilot\$APFileName" -NewName 'W:\Windows\Provisioning\Autopilot\AutoPilotConfigurationFile.json'
         WriteLog "Renamed W:\Windows\Provisioning\Autopilot\$APFilename to W:\Windows\Provisioning\Autopilot\AutoPilotConfigurationFile.json"
@@ -920,11 +918,15 @@ if ($computername) {
     }   
 }
 # Apply PPKG
-WriteLog "Applying PPKG to $PhysicalDeviceID"
-WriteLog "Running command DISM /Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\DefaultImageSettings.ppkg"
-DISM /Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\DefaultImageSettings.ppkg
+# Modify to use in a loop and not hard-code paths
+Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\DefaultImageSettings.ppkg" -Wait -NoNewWindow
+Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\StartLayout.ppkg" -Wait -NoNewWindow
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
+if (Test-Path -Path $Drivers -PathType Container) {
+    Remove-Item -Path $Drivers -Recurse -Force
+}
+Start-Sleep -Seconds 5
 if (Test-Path -Path $Drivers -PathType Container) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
@@ -949,7 +951,6 @@ $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
 $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
 New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
 Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
-# powershell -command { Start-Process -FilePath "powershell" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File ""C:\Autopilot\Register-Autopilot.ps1""" -WindowStyle Hidden }
 WriteLog "Copying dism log to $LogFileDir"
 Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"
