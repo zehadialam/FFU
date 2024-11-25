@@ -134,10 +134,17 @@ if ($admxFiles -and $admlFiles) {
         Copy-CustomizationFile -SourcePath $admlFile.FullName -DestinationPath "$env:windir\PolicyDefinitions\en-US"
     }
 }
+$LGPO = "$customizationsFolder\GPOS\LGPO.exe"
 $GPOs = Get-ChildItem -Path "$customizationsFolder\GPOs\*.txt" -Recurse -Force
 foreach ($GPO in $GPOs) {
-    Start-Process -FilePath "$customizationsFolder\GPOS\LGPO.exe" -ArgumentList "/t ""$($GPO.FullName)"" /v" -Wait -NoNewWindow
+    Start-Process -FilePath "$LGPO" -ArgumentList "/t ""$($GPO.FullName)"" /v" -Wait -NoNewWindow
 }
+$secTemplates = Get-ChildItem -Path "$customizationsFolder\GPOs\*.inf" -Recurse -Force
+foreach ($secTemplate in $secTemplates) {
+    Start-Process -FilePath "$LGPO" -ArgumentList "/s ""$($secTemplate.FullName)"" /v" -Wait -NoNewWindow
+}
+$auditPolicy = Get-ChildItem -Path "$customizationsFolder\GPOs\*.csv" -Recurse -Force
+Start-Process -FilePath "$env:windir\system32\auditpol.exe" -ArgumentList "/restore /file:""$($auditPolicy.FullName)""" -Wait -NoNewWindow
 $keys = @(
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate",
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate"

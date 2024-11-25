@@ -214,6 +214,12 @@ function Optimize-DellBIOSSettings {
         -SuccessMessage 'TPM is activated' `
         -UnsupportedMessage 'TPM activation is not supported on this system' `
         -Password 'password'
+    Enable-DellBIOSSetting `
+        -BiosSettingsPath 'DellSmbios:\VirtualizationSupport' `
+        -SettingName 'TrustExecution' `
+        -ExpectedValue 'Enabled' `
+        -SuccessMessage 'Trusted Execution is enabled' `
+        -UnsupportedMessage 'Trusted Execution is not supported on this system'
 }
 
 function Optimize-BIOSSettings {
