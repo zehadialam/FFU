@@ -45,6 +45,7 @@ param (
 #region Functions 
 
 function Install-RequiredModules {
+    $progressPreference = 'silentlyContinue'
     if (-not (Get-PackageProvider -Name NuGet -Force -ErrorAction SilentlyContinue)) {
         Write-Host "Installing NuGet..." -ForegroundColor Yellow
         Install-PackageProvider -Name NuGet -Force -Confirm:$false | Out-Null
@@ -61,13 +62,22 @@ function Install-RequiredModules {
     foreach ($module in $modules) {
         if (-not (Get-InstalledModule -Name $module -ErrorAction SilentlyContinue)) {
             Write-Host "`nInstalling $module module..." -ForegroundColor Yellow
-            Install-Module -Name $module -Force -Confirm:$false -AllowClobber -Scope CurrentUser -WarningAction SilentlyContinue
+            Install-Module -Name $module -Force -Confirm:$false -AllowClobber -Scope CurrentUser -WarningAction SilentlyContinue | Out-Null
             Write-Host "$module module is installed." -ForegroundColor Green
             Write-Host "Importing $module module..." -ForegroundColor Yellow
             Import-Module -Name $module -Force -Global -NoClobber -WarningAction SilentlyContinue
             Write-Host "$module module is imported" -ForegroundColor Green
         }
     }
+}
+
+function Install-WinGet {
+    $progressPreference = 'silentlyContinue'
+    Write-Host "`nInstalling WinGet PowerShell module from PSGallery..." -ForegroundColor Yellow
+    Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery -Scope AllUsers | Out-Null
+    Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..." -ForegroundColor Yellow
+    Repair-WinGetPackageManager
+    Write-Host "Done" -ForegroundColor Green
 }
 
 function Get-AzureAdDeviceId {
@@ -148,13 +158,13 @@ function Remove-EntraDeviceRecord {
     }
     Write-Host "Found device in Entra with the name $computerName. Checking if device record needs deletion..." -ForegroundColor Yellow
     foreach ($entraDevice in $entraDeviceResult) {
-        $enrollmentType = $entraDevice.EnrollmentType
+        # $enrollmentType = $entraDevice.EnrollmentType
         # AzureADJoinUsingWhiteGlove
-        if ($enrollmentType -eq "AzureDomainJoined") {
-            Write-Host "Device enrollment type is $enrollmentType and does not require deletion." -ForegroundColor Green
-            continue
-        }
-        Write-Host "Device enrollment type is $enrollmentType and requires deletion." -ForegroundColor Yellow
+        # if ($enrollmentType -eq "AzureDomainJoined") {
+        #     Write-Host "Device enrollment type is $enrollmentType and does not require deletion." -ForegroundColor Green
+        #     continue
+        # }
+        # Write-Host "Device enrollment type is $enrollmentType and requires deletion." -ForegroundColor Yellow
         Remove-AutopilotDeviceRecord -SerialNumber $serialNumber
         Write-Host "Deleting Entra device record..." -ForegroundColor Yellow
         Remove-MgDevice -DeviceId $entraDevice.Id -ErrorAction Stop
@@ -307,6 +317,7 @@ try {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
     Install-RequiredModules
+    Install-WinGet
 
     do {
         $prompt = Read-Host "`nPress Enter to log in with your administrative Entra account"

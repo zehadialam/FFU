@@ -409,15 +409,15 @@ function Install-Drivers {
     )
     try {
         #Some drivers can sometimes fail to copy and dism ends up with a non-zero error code. Invoke-process will throw and terminate in these instances. 
-        if (Test-Path -Path $Drivers -PathType Container) {
+        if (Test-Path -Path $Drivers -PathType Container -and (Get-ChildItem -Path $Drivers | Measure-Object).Count -gt 0) {
             WriteLog 'Copying drivers'
             Write-Warning 'Copying Drivers - dism will pop a window with no progress. This can take a few minutes to complete. This is done so drivers are logged to the scriptlog.txt file. Please be patient.'
-            Invoke-process dism.exe "/image:W:\ /Add-Driver /Driver:""$Drivers"" /Recurse"
+            Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$Drivers""", "/Recurse" -Wait -NoNewWindow
             WriteLog 'Copying drivers succeeded'
         }
         else {
             $driverPath = Get-LocalDrivers -Model $model
-            if ($driverPath) {
+            if ($driverPath -and $ComputerManufacturer -eq "Dell Inc.") {
                 Write-Host "Extracting driver pack to $driverPath..." -ForegroundColor Yellow
                 $driverPackPath = Get-ChildItem -Path "$driverPath\*" -Include "*.exe" -File -ErrorAction Stop
                 if (-not $driverPackPath) {
@@ -474,14 +474,11 @@ $PhysicalDeviceID = $hardDrive.DeviceID
 $BytesPerSector = $hardDrive.BytesPerSector
 WriteLog "Physical BytesPerSector is $BytesPerSector"
 WriteLog "Physical DeviceID is $PhysicalDeviceID"
-#Parse DiskID Number
 $DiskID = $PhysicalDeviceID.substring($PhysicalDeviceID.length - 1, 1)
 $SetupCompleteData = ""
 WriteLog "DiskID is $DiskID"
-#Find FFU Files
 [array]$FFUFiles = @(Get-ChildItem -Path $USBDrive*.ffu)
 $FFUCount = $FFUFiles.Count
-#If multiple FFUs found, ask which to install
 if ($FFUCount -gt 1) {
     WriteLog "Found $FFUCount FFU Files"
     $array = @()
@@ -519,6 +516,9 @@ $APFolder = $USBDrive + "Autopilot\"
 If (Test-Path -Path $APFolder) {
     [array]$APFiles = @(Get-ChildItem -Path $APFolder*.json)
     $APFilesCount = $APFiles.Count
+    if (Test-Path -Path "$APFolder\AutopilotGroupMapping.json" -PathType Leaf) {
+        $APFilesCount -= 1
+    }
     if ($APFilesCount -ge 1) {
         $autopilot = $true
     }
@@ -553,30 +553,39 @@ if ($Unattend -and $UnattendPrefix) {
     $registerAutopilotPath = Join-Path -Path $APFolder -ChildPath "Register-Autopilot.ps1"
     $autopilotContent = Get-Content -Path $registerAutopilotPath
     WriteLog 'Unattend file found with prefixes.txt. Getting prefixes.'
-    $selection = @"
+    $deploymentTeams = @{
+        1 = "Service Desk"
+        2 = "Field Services"
+        3 = "Griffin Campus"
+    }
+    do {
+        Write-Host @"
 Please select the deployment team:
 ====================================
 [1] Service Desk
 [2] Field Services
+[3] Griffin Campus
 ====================================
 "@
-    do {
-        Write-Host $selection
-        $choice = Read-Host 'Enter the number corresponding to your choice'
-        $deploymentTeam = switch ($choice) {
-            '1' { "Service Desk"; break }
-            '2' { "Field Services"; break }
-            default {
-                Write-Host "Invalid selection. Please enter 1 or 2." -ForegroundColor Red
-                $null
-            }
+    $choice = Read-Host 'Enter the number corresponding to your choice'
+        $deploymentTeam = $deploymentTeams[$choice]
+        if (-not $deploymentTeam) {
+            Write-Host "Invalid selection. Pick a number from the above." -ForegroundColor Red
         }
     } until ($deploymentTeam)
     do {
         $deploymentType = Read-Host 'Is this a shared device? [Y]es or [N]o'
     } until ($deploymentType -match '^[YyNn]$')
+    $isSharedDevice = $deploymentType.ToUpperInvariant() -eq 'Y'
+    if ($isSharedDevice) {
+        do {
+            $sharedDeviceType = Read-Host 'Is this an A/V or computer lab device? [Y]es or [N]o'
+        } until ($sharedDeviceType -match '^[YyNn]$')
+        if ($sharedDeviceType.ToUpperInvariant() -eq 'N') {
+            Move-Item -Path "$PPKGFolder\IntuneEnroll.ppkg.bak" -Destination "$USBDrive\IntuneEnroll.ppkg"
+        }
+    }
     if ($deploymentTeam -eq "Field Services") {
-        $SetupCompleteData += "`npowershell.exe -command { Add-Computer -WorkgroupName COUNTY }"
         do {
             $localAccount = Read-Host 'Do you want to create a local account? [Y]es or [N]o'
         } until ($localAccount -match '^[YyNn]$')
@@ -586,29 +595,37 @@ Please select the deployment team:
             $SetupCompleteData += "`nnet user $username $password /add && net localgroup Administrators $username /add && wmic useraccount where name=$username set PasswordExpires=false"
         }
     }
-    if ($deploymentType.ToUpperInvariant() -eq 'Y') {
-        $groupTag = "CAES-SHARED"
-        $autopilot = $false
-    }
-    else {
-        if ($deploymentTeam -eq "Service Desk") {
-            $groupTag = "CAESATH"
+    switch ($deploymentTeam) {
+        "Service Desk" {
+            $groupTag = $isSharedDevice ? "CAES-SHARED" : "CAESATH"
+            $registerAutopilot = !$isSharedDevice
             $autopilot = $false
         }
-        if ($deploymentTeam -eq "Field Services") {
-            $groupTag = "CAESFLD"
+        "Field Services" {
+            $groupTag = $isSharedDevice ? "CAES-SHARED" : "CAESFLD"
+            $registerAutopilot = !$isSharedDevice
+            if ($registerAutopilot) {
+                $autopilotContent = $autopilotContent -replace '\[bool\]\$Assign = \$true', "[bool]`$Assign = `$false"
+            }
             $autopilot = $true
-            $autopilotContent = $autopilotContent -replace '\[bool\]\$Assign = \$true', "[bool]`$Assign = `$false"
+        }
+        "Griffin Campus" {
+            $registerAutopilot = $false
+            $autopilot = $false
         }
     }
-    $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
-    if ($deploymentType.ToUpperInvariant() -eq 'Y' -or $deploymentTeam -eq "Field Services") {
-        $computerName = Read-Host 'Type in the name of the computer'
-        $computerName = $computerName -replace "\s", ""
-        if ($computerName.Length -gt 15) {
-            $SetupCompleteData += "powershell.exe -Command { Rename-Computer -NewName $computerName -Force }"
-            $computerName = $computerName.substring(0, 15)
-        }
+    if ($groupTag) {
+        $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
+    }
+    if ($isSharedDevice -or $deploymentTeam -ne "Service Desk") {
+        do {
+            $computerName = Read-Host 'Type in the name of the computer'
+            $computerName = $computerName -replace "\s", ""
+            if ($computerName.Length -gt 15) {
+                $SetupCompleteData += "`npowershell.exe -Command { Rename-Computer -NewName $computerName -Force }"
+                $computerName = $computerName.Substring(0, 15)
+            }
+        } while (-not $computerName)
         $computerName = Set-Computername($computername)
         WriteLog "Computer name set to $computername"
     }
@@ -642,13 +659,11 @@ Please select the deployment team:
             $PrefixToUse = $UnattendPrefixes[0]
             WriteLog "Will use $PrefixToUse as device name prefix"
         }
-        #Get serial number to append. This can make names longer than 15 characters. Trim any leading or trailing whitespace
         $serial = (Get-CimInstance -ClassName win32_bios).SerialNumber.Trim()
-        #Combine prefix with serial
         $computername = ($PrefixToUse + $serial) -replace "\s", "" # Remove spaces because windows does not support spaces in the computer names
         #If computername is longer than 15 characters, reduce to 15. Sysprep/unattend doesn't like ComputerName being longer than 15 characters even though Windows accepts it
         if ($computername.Length -gt 15) {
-            $SetupCompleteData += "powershell.exe -Command { Rename-Computer -NewName $computerName -Force }"
+            $SetupCompleteData += "`npowershell.exe -Command { Rename-Computer -NewName $computerName -Force }"
             $computername = $computername.substring(0, 15)
         }
         $computername = Set-Computername($computername)
@@ -924,39 +939,43 @@ if ($computername) {
     }   
 }
 # Apply PPKG
-# Modify to use in a loop and not hard-code paths
-Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\DefaultImageSettings.ppkg" -Wait -NoNewWindow
-Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$USBDrive\Provisioning\StartLayout.ppkg" -Wait -NoNewWindow
+$provisioningFolder = Join-Path -Path $USBDrive -ChildPath "Provisioning"
+if (Test-Path -Path $provisioningFolder -PathType Container -and (Get-ChildItem -Path $provisioningFolder | Measure-Object).Count -gt 0) {
+    $provisioningPackages = Get-ChildItem -Path $provisioningPath -Filter "*.ppkg"
+    if ($provisioningPackages) {
+        foreach ($provisioningPackage in $provisioningPackages) {
+            Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$($provisioningPackage.FullName)" -Wait -NoNewWindow
+        }
+    }
+}
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
 if (Test-Path -Path $Drivers -PathType Container) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
-Start-Sleep -Seconds 5
-if (Test-Path -Path $Drivers -PathType Container) {
-    Remove-Item -Path $Drivers -Recurse -Force
-}
-$autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
-$autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
-$autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
-$autopilotFiles = @(
-    $autopilotexe,
-    $autopilotGroupMapping,
-    $autopilotCleanup
-)
-if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
-    New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
-}
-foreach ($file in $autopilotFiles) {
-    if (-not (Test-Path -Path $file -PathType Leaf)) {
-        throw "$file not found"
+if ($registerAutopilot) {
+    $autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
+    $autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
+    $autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
+    $autopilotFiles = @(
+        $autopilotexe,
+        $autopilotGroupMapping,
+        $autopilotCleanup
+    )
+    if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
+        New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
     }
-    Copy-Item -Path $file -Destination "W:\Autopilot" -Force
+    foreach ($file in $autopilotFiles) {
+        if (-not (Test-Path -Path $file -PathType Leaf)) {
+            throw "$file not found"
+        }
+        Copy-Item -Path $file -Destination "W:\Autopilot" -Force
+    }
+    $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
+    $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
+    New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
+    Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 }
-$autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
-$SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
-New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
-Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 WriteLog "Copying dism log to $LogFileDir"
 Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"

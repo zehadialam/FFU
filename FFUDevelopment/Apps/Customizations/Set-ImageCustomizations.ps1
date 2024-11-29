@@ -80,6 +80,32 @@ function Set-PolicySettings {
     }
 }
 
+function Set-SecurityBaselines {
+    param (
+        [string]$CustomizationsFolder
+    )
+    try {
+        $policyDefinitionsPath = "$env:windir\PolicyDefinitions"
+        $policyLanguagePath = "$policyDefinitionsPath\en-US"
+        Get-ChildItem -Path "$CustomizationsFolder\GPOs\*.admx" -Recurse -Force -ErrorAction SilentlyContinue | 
+            ForEach-Object { Copy-CustomizationFile -SourcePath $_.FullName -DestinationPath $policyDefinitionsPath }
+        Get-ChildItem -Path "$CustomizationsFolder\GPOs\*.adml" -Recurse -Force -ErrorAction SilentlyContinue | 
+            ForEach-Object { Copy-CustomizationFile -SourcePath $_.FullName -DestinationPath $policyLanguagePath }
+        $LGPO = "$CustomizationsFolder\GPOS\LGPO.exe"
+        if (Test-Path -Path $LGPO -PathType Leaf) {
+            Get-ChildItem -Path "$CustomizationsFolder\GPOs\*.txt" -Recurse -Force -ErrorAction SilentlyContinue | 
+                ForEach-Object { Start-Process -FilePath $LGPO -ArgumentList "/t ""$($_.FullName)"" /v" -Wait -NoNewWindow }
+            Get-ChildItem -Path "$CustomizationsFolder\GPOs\*.inf" -Recurse -Force -ErrorAction SilentlyContinue | 
+                ForEach-Object { Start-Process -FilePath $LGPO -ArgumentList "/s ""$($_.FullName)"" /v" -Wait -NoNewWindow }
+        }
+        Get-ChildItem -Path "$CustomizationsFolder\GPOs\*.csv" -Recurse -Force -ErrorAction SilentlyContinue |
+            ForEach-Object { Start-Process -FilePath "$env:windir\system32\auditpol.exe" -ArgumentList "/restore /file:""$($_.FullName)""" -Wait -NoNewWindow }
+    }
+    catch {
+        Write-Error "Error processing security baselines: $_"
+    }
+}
+
 function Build-InternetShortcut {
     param (
         [string]$Url,
@@ -98,7 +124,6 @@ function Set-PublicDesktopContents {
     $publicDesktopApps = @(
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Firefox.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\OneDrive.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Zoom\Zoom Workplace.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Cisco\Cisco AnyConnect Secure Mobility Client\Cisco AnyConnect Secure Mobility Client.lnk"
     )
@@ -117,41 +142,14 @@ function Set-PublicDesktopContents {
 
 $customizationsFolder = "D:\Customizations"
 Remove-UWPApps
-# Copy lock screen background
 Copy-CustomizationFile -SourcePath "$customizationsFolder\lockscreen.jpg" -DestinationPath "$env:windir\Web\Screen"
-# Copy theme file to "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
 # https://learn.microsoft.com/en-us/windows/win32/controls/themesfileformat-overview
 # https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/set-dark-mode
 Copy-CustomizationFile -SourcePath "$customizationsFolder\oem.theme" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
 Set-PolicySettings -SettingsFile "$customizationsFolder\RegistrySettings.json"
-$admxFiles = Get-ChildItem -Path "$customizationsFolder\GPOs\*.admx" -Recurse -Force
-$admlFiles = Get-ChildItem -Path "$customizationsFolder\GPOs\*.adml" -Recurse -Force
-if ($admxFiles -and $admlFiles) {
-    foreach ($admxFile in $admxFiles) {
-        Copy-CustomizationFile -SourcePath $admxFile.FullName -DestinationPath "$env:windir\PolicyDefinitions"
-    }
-    foreach ($admlFile in $admlFiles) {
-        Copy-CustomizationFile -SourcePath $admlFile.FullName -DestinationPath "$env:windir\PolicyDefinitions\en-US"
-    }
-}
-$LGPO = "$customizationsFolder\GPOS\LGPO.exe"
-$GPOs = Get-ChildItem -Path "$customizationsFolder\GPOs\*.txt" -Recurse -Force
-foreach ($GPO in $GPOs) {
-    Start-Process -FilePath "$LGPO" -ArgumentList "/t ""$($GPO.FullName)"" /v" -Wait -NoNewWindow
-}
-$secTemplates = Get-ChildItem -Path "$customizationsFolder\GPOs\*.inf" -Recurse -Force
-foreach ($secTemplate in $secTemplates) {
-    Start-Process -FilePath "$LGPO" -ArgumentList "/s ""$($secTemplate.FullName)"" /v" -Wait -NoNewWindow
-}
-$auditPolicy = Get-ChildItem -Path "$customizationsFolder\GPOs\*.csv" -Recurse -Force
-Start-Process -FilePath "$env:windir\system32\auditpol.exe" -ArgumentList "/restore /file:""$($auditPolicy.FullName)""" -Wait -NoNewWindow
-$keys = @(
+Set-SecurityBaselines -CustomizationsFolder $customizationsFolder
+@(
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate",
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate"
-)
-foreach ($key in $keys) {
-    if (Test-Path $key) {
-        Remove-Item -Path $key -Force
-    }
-}
+) | Where-Object { Test-Path $_ } | ForEach-Object { Remove-Item -Path $_ -Force }
 Set-PublicDesktopContents
