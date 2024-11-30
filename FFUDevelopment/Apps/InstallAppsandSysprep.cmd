@@ -11,6 +11,13 @@ REM Winget Win32 Apps
 REM Add additional apps below here
 REM Contoso App (Example)
 REM msiexec /i d:\Contoso\setup.msi /qn /norestart
+set "anyconnectfolder=D:\Cisco-AnyConnect"
+for %%f in ("%anyconnectfolder%\*.msi") do (
+    set "anyconnectinstaller=%%f"
+)
+if defined anyconnectinstaller (
+    msiexec /i %anyconnectinstaller% /qn /norestart
+)
 set "INSTALL_STOREAPPS=false"
 if /i "%INSTALL_STOREAPPS%"=="false" (
     echo Skipping MS Store installation due to INSTALL_STOREAPPS flag.
