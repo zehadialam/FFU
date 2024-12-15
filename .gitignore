@@ -1,4 +1,6 @@
 FFUDevelopment/Autopilot/*.json
 FFUDevelopment/Apps/Customizations/*.bin
-FFUDevelopment/Apps/Customizations/*.ppkg
+FFUDevelopment/PPKG/NotForIntune
 FFUDevelopment/PPKG/*.ppkg
+FFUDevelopment/Autopilot/*.exe
+FFUDevelopment/PEResources/WinPE-Wallpaper/winpe.jpg

@@ -71,15 +71,6 @@ function Install-RequiredModules {
     }
 }
 
-function Install-WinGet {
-    $progressPreference = 'silentlyContinue'
-    Write-Host "`nInstalling WinGet PowerShell module from PSGallery..." -ForegroundColor Yellow
-    Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery -Scope AllUsers | Out-Null
-    Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..." -ForegroundColor Yellow
-    Repair-WinGetPackageManager
-    Write-Host "Done" -ForegroundColor Green
-}
-
 function Get-AzureAdDeviceId {
     param (
         [Parameter(Mandatory = $true)]
@@ -317,7 +308,6 @@ try {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
     Install-RequiredModules
-    Install-WinGet
 
     do {
         $prompt = Read-Host "`nPress Enter to log in with your administrative Entra account"

@@ -1619,24 +1619,37 @@ function Get-WindowsESD {
     }
 }
 
-
-
 function Get-ODTURL {
+    try {
+        [String]$ODTPage = Invoke-WebRequest 'https://www.microsoft.com/en-us/download/details.aspx?id=49117' -Headers $Headers -UserAgent $UserAgent -ErrorAction Stop
 
-    # [String]$MSWebPage = Invoke-RestMethod 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=49117'
-    [String]$MSWebPage = Invoke-RestMethod 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=49117' -Headers $Headers -UserAgent $UserAgent
-  
-    $MSWebPage | ForEach-Object {
-        if ($_ -match 'url=(https://.*officedeploymenttool.*\.exe)') {
-            $matches[1]
+        # Extract JSON data from the webpage
+        if ($ODTPage -match '<script>window\.__DLCDetails__=(.*?)<\/script>') {
+            # Parse JSON content
+            $jsonContent = $matches[1] | ConvertFrom-Json
+            $ODTURL = $jsonContent.dlcDetailsView.downloadFile[0].url
+
+            if ($ODTURL) {
+                return $ODTURL
+            } else {
+                WriteLog 'Cannot find the ODT download URL in the JSON content'
+                throw 'Cannot find the ODT download URL in the JSON content'
+            }
+        } else {
+            WriteLog 'Failed to extract JSON content from the ODT webpage'
+            throw 'Failed to extract JSON content from the ODT webpage'
         }
+    }
+    catch {
+        WriteLog $_.Exception.Message
+        throw 'An error occurred while retrieving the ODT URL.'
     }
 }
 
 function Get-Office {
     #Download ODT
     $ODTUrl = Get-ODTURL
-    $ODTInstallFile = "$env:TEMP\odtsetup.exe"
+    $ODTInstallFile = "$FFUDevelopmentPath\odtsetup.exe"
     WriteLog "Downloading Office Deployment Toolkit from $ODTUrl to $ODTInstallFile"
     $OriginalVerbosePreference = $VerbosePreference
     $VerbosePreference = 'SilentlyContinue'
@@ -1645,7 +1658,7 @@ function Get-Office {
 
     # Extract ODT
     WriteLog "Extracting ODT to $OfficePath"
-    Invoke-Process $ODTInstallFile "/extract:$OfficePath /quiet"
+    Invoke-Process $ODTInstallFile "/extract:$OfficePath /quiet" | Out-Null
 
     # Run setup.exe with config.xml and modify xml file to download to $OfficePath
     $ConfigXml = "$OfficePath\DownloadFFU.xml"
@@ -1653,7 +1666,7 @@ function Get-Office {
     $xmlContent.Configuration.Add.SourcePath = $OfficePath
     $xmlContent.Save($ConfigXml)
     WriteLog "Downloading M365 Apps/Office to $OfficePath"
-    Invoke-Process $OfficePath\setup.exe "/download $ConfigXml"
+    Invoke-Process $OfficePath\setup.exe "/download $ConfigXml" | Out-Null
 
     WriteLog "Cleaning up ODT default config files and checking InstallAppsandSysprep.cmd file for proper command line"
     #Clean up default configuration files
@@ -1672,6 +1685,11 @@ function Get-Office {
         # Write the modified content back to the file
         Set-Content -Path "$AppsPath\InstallAppsandSysprep.cmd" -Value $content
     }
+
+    #Remove the ODT setup file
+    WriteLog "Removing ODT setup file"
+    Remove-Item -Path $ODTInstallFile -Force
+    WriteLog "ODT setup file removed"
 }
 
 function Install-WinGet {
@@ -2718,6 +2736,83 @@ Function Set-CaptureFFU {
     }
 }
 
+function Get-WinPEDellDriverPack {
+    param (
+        [string]$DestinationPath
+    )
+    if (-not (Get-Module -ListAvailable -Name OSD)) {
+        Install-Module -Name OSD -Force -Confirm:$false
+    }
+    Import-Module OSD
+    $driverPackUrl = Get-DellWinPEDriverPack
+    Start-BitsTransferWithRetry -Source $driverPackUrl -Destination $DestinationPath
+    $driverPack = Get-ChildItem -Path $DestinationPath -Filter "*.cab" -File
+    Start-Process -FilePath expand.exe -ArgumentList "-f:* ""$($driverPack.FullName)"" ""$DestinationPath""" -Wait -NoNewWindow
+}
+
+function Add-WinPEApps {
+    param (
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+    $psexec64Path = Join-Path -Path $SourcePath -ChildPath "PsExec64.exe"
+    Start-BitsTransferWithRetry -Source "https://live.sysinternals.com/PsExec64.exe" -Destination $psexec64Path
+    Copy-Item -Path $psexec64Path -Destination $DestinationPath -Force
+    $curlArchivePath = Join-Path -Path $SourcePath -ChildPath "curl.zip"
+    $curlExtractPath = Join-Path -Path $SourcePath -ChildPath "curl"
+    Start-BitsTransferWithRetry -Source "https://curl.se/windows/latest.cgi?p=win64-mingw.zip" -Destination $curlArchivePath
+    Expand-Archive -Path $curlArchivePath -DestinationPath $curlExtractPath -Force
+    $curlBinPath = Get-ChildItem -Path "$FFUDevelopmentPath\PEResources\WinPE-Apps" -Filter "bin" -Recurse -Directory | Select-Object -ExpandProperty FullName
+    $curlWinPEPath = Join-Path -Path $DestinationPath -ChildPath "curl"
+    New-Item -Path $curlWinPEPath -ItemType Directory -Force | Out-Null
+    Copy-Item -Path $curlBinPath -Destination $curlWinPEPath -Recurse -Force
+}
+
+function Add-PSModules {
+    param (
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+    if (-not (Get-Module -ListAvailable -Name DellBIOSProvider)) {
+        Install-Module -Name DellBIOSProvider -Force -Confirm:$false
+    }
+    $dellBIOSProviderPath = Join-Path $SourcePath -ChildPath "DellBIOSProvider"
+    $dellBIOSProviderDirectory = Get-ChildItem -Path $dellBIOSProviderPath -Directory
+    $dellBIOSProviderLatestDirectory = $dellBIOSProviderDirectory | Sort-Object CreationTime -Descending | Select-Object -First 1
+    New-Item -Path $DestinationPath -Name "DellBIOSProvider" -ItemType Directory -Force | Out-Null
+    Copy-Item -Path "$dellBIOSProviderPath\$dellBIOSProviderLatestDirectory" -Destination "$DestinationPath\DellBIOSProvider" -Recurse -Force
+    # https://www.dell.com/support/kbdoc/en-us/000146531/installing-the-dell-smbios-powershell-provider-in-windows-pe
+    $dellBIOSProviderWinPEDependencies = @(
+        "$env:windir\System32\msvcp140.dll",
+        "$env:windir\System32\vcruntime140.dll",
+        "$env:windir\System32\vcruntime140_1.dll"
+    )
+    $dellBIOSProviderWinPEPath = Join-Path -Path $DestinationPath -ChildPath "DellBIOSProvider\$dellBIOSProviderLatestDirectory"
+    foreach ($dependency in $dellBIOSProviderWinPEDependencies) {
+        Copy-Item -Path $dependency -Destination $dellBIOSProviderWinPEPath -Force
+    }
+    $osdPath = Join-Path $SourcePath -ChildPath "OSD"
+    Copy-Item -Path $osdPath -Destination $DestinationPath -Recurse -Force
+}
+
+function Set-WinPEWallpaper {
+    param (
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+    if (-not (Test-Path -Path $SourcePath -PathType Container)) {
+        return
+    }
+    $wallpaperFile = Get-ChildItem -Path $SourcePath -Filter "winpe.jpg" -File
+    if (-not $wallpaperFile) {
+        return
+    }
+    $defaultWallpaper = Join-Path -Path $DestinationPath -ChildPath "winpe.jpg"
+    Start-Process -FilePath takeown.exe -ArgumentList "/f ""$defaultWallpaper""" -Wait -NoNewWindow
+    Start-Process -FilePath icacls.exe -ArgumentList """$defaultWallpaper"" /grant administrators:F" -Wait -NoNewWindow
+    Copy-Item -Path $wallpaperFile.FullName -Destination $DestinationPath -Force
+}
+
 function New-PEMedia {
     param (
         [Parameter()]
@@ -2728,12 +2823,10 @@ function New-PEMedia {
     #Need to use the Demployment and Imaging tools environment to create winPE media
     $DandIEnv = "$adkPath`Assessment and Deployment Kit\Deployment Tools\DandISetEnv.bat"
     $WinPEFFUPath = "$FFUDevelopmentPath\WinPE"
-
     If (Test-path -Path "$WinPEFFUPath") {
         WriteLog "Removing old WinPE path at $WinPEFFUPath"
         Remove-Item -Path "$WinPEFFUPath" -Recurse -Force | out-null
     }
-
     WriteLog "Copying WinPE files to $WinPEFFUPath"
     if($WindowsArch -eq 'x64') {
         & cmd /c """$DandIEnv"" && copype amd64 $WinPEFFUPath" | Out-Null
@@ -2743,34 +2836,37 @@ function New-PEMedia {
     }
     #Invoke-Process cmd "/c ""$DandIEnv"" && copype amd64 $WinPEFFUPath"
     WriteLog 'Files copied successfully'
-
     WriteLog 'Mounting WinPE media to add WinPE optional components'
     Mount-WindowsImage -ImagePath "$WinPEFFUPath\media\sources\boot.wim" -Index 1 -Path "$WinPEFFUPath\mount" | Out-Null
     WriteLog 'Mounting complete'
-
     $Packages = @(
+        "WinPE-HTA.cab",
+        "en-us\WinPE-HTA_en-us.cab",
         "WinPE-WMI.cab",
         "en-us\WinPE-WMI_en-us.cab",
-        "WinPE-NetFX.cab",
-        "en-us\WinPE-NetFX_en-us.cab",
-        "WinPE-Scripting.cab",
-        "en-us\WinPE-Scripting_en-us.cab",
-        "WinPE-PowerShell.cab",
-        "en-us\WinPE-PowerShell_en-us.cab",
         "WinPE-StorageWMI.cab",
         "en-us\WinPE-StorageWMI_en-us.cab",
+        "WinPE-Scripting.cab",
+        "en-us\WinPE-Scripting_en-us.cab",
+        "WinPE-NetFx.cab",
+        "en-us\WinPE-NetFx_en-us.cab",
+        "WinPE-PowerShell.cab",
+        "en-us\WinPE-PowerShell_en-us.cab",
         "WinPE-DismCmdlets.cab",
-        "en-us\WinPE-DismCmdlets_en-us.cab"
+        "en-us\WinPE-DismCmdlets_en-us.cab",
+        "WinPE-FMAPI.cab",
+        "WinPE-SecureBootCmdlets.cab",
+        "WinPE-EnhancedStorage.cab",
+        "en-us\WinPE-EnhancedStorage_en-us.cab",
+        "WinPE-SecureStartup.cab",
+        "en-us\WinPE-SecureStartup_en-us.cab"
     )
-
     if($WindowsArch -eq 'x64'){
         $PackagePathBase = "$adkPath`Assessment and Deployment Kit\Windows Preinstallation Environment\amd64\WinPE_OCs\"
     }
     elseif($WindowsArch -eq 'arm64'){
         $PackagePathBase = "$adkPath`Assessment and Deployment Kit\Windows Preinstallation Environment\arm64\WinPE_OCs\"
     }
-    
-
     foreach ($Package in $Packages) {
         $PackagePath = Join-Path $PackagePathBase $Package
         WriteLog "Adding Package $Package"
@@ -2788,10 +2884,18 @@ function New-PEMedia {
         # $Capture = $false
     }
     If ($Deploy) {
+        $winPEApps = "$FFUDevelopmentPath\PEResources\WinPE-Apps"
+        $winPEDrivers = "$FFUDevelopmentPath\PEDrivers"
+        $winPEWallpaper = "$FFUDevelopmentPath\PEResources\WinPE-Wallpaper"
+        Add-WinPEApps -SourcePath $winPEApps -DestinationPath "$WinPEFFUPath\mount\Windows\system32"
+        Add-PSModules -SourcePath "$env:ProgramFiles\WindowsPowerShell\Modules" -DestinationPath "$WinPEFFUPath\mount\Program Files\WindowsPowerShell\Modules"
+        Set-WinPEWallpaper -SourcePath $winPEWallpaper -DestinationPath "$WinPEFFUPath\mount\Windows\system32"
         WriteLog "Copying $FFUDevelopmentPath\WinPEDeployFFUFiles\* to WinPE deploy media"
         Copy-Item -Path "$FFUDevelopmentPath\WinPEDeployFFUFiles\*" -Destination "$WinPEFFUPath\mount" -Recurse -Force | Out-Null
         WriteLog 'Copy complete'
         #If $CopyPEDrivers = $true, add drivers to WinPE media using dism
+        Get-WinPEDellDriverPack -DestinationPath $winPEDrivers
+        $copyPEDrivers = $true
         if ($CopyPEDrivers) {
             WriteLog "Adding drivers to WinPE media"
             try {
@@ -2802,9 +2906,10 @@ function New-PEMedia {
             }
             WriteLog "Adding drivers complete"
         }
+        Get-ChildItem -Path $winPEApps -Exclude ".gitkeep" -Recurse -Force | Remove-Item -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue
+        Get-ChildItem -Path $winPEDrivers -Exclude ".gitkeep" -Recurse -Force | Remove-Item -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue
         # $WinPEISOName = 'WinPE_FFU_Deploy.iso'
         $WinPEISOFile = $DeployISO
-
         # $Deploy = $false
     }
     WriteLog 'Dismounting WinPE media' 
@@ -3388,6 +3493,9 @@ Function New-DeploymentUSB {
                 if ($CopyPPKG) {
                     WriteLog "Copying PPKG folder to $DeployPartitionDriveLetter"
                     Copy-Item -Path "$FFUDevelopmentPath\PPKG" -Destination $DeployPartitionDriveLetter -Recurse -Force
+                    if (Test-Path -Path "$PPKGFolder\NotForIntune") {
+                        Move-Item -Path "$DeployPartitionDriveLetter\PPKG\NotForIntune" -Destination "$DeployPartitionDriveLetter\Provisioning" -Force
+                    }
                 }
                 #Copy Autopilot folder in the FFU folder to the USB drive. Can use copy-item as it's a small folder
                 if ($CopyAutopilot) {

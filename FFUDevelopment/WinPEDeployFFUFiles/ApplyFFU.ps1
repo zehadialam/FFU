@@ -409,11 +409,13 @@ function Install-Drivers {
     )
     try {
         #Some drivers can sometimes fail to copy and dism ends up with a non-zero error code. Invoke-process will throw and terminate in these instances. 
-        if (Test-Path -Path $Drivers -PathType Container -and (Get-ChildItem -Path $Drivers | Measure-Object).Count -gt 0) {
-            WriteLog 'Copying drivers'
-            Write-Warning 'Copying Drivers - dism will pop a window with no progress. This can take a few minutes to complete. This is done so drivers are logged to the scriptlog.txt file. Please be patient.'
-            Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$Drivers""", "/Recurse" -Wait -NoNewWindow
-            WriteLog 'Copying drivers succeeded'
+        if (Test-Path -Path $Drivers -PathType Container) {
+            if ((Get-ChildItem -Path $Drivers | Measure-Object).Count -gt 0) {
+                WriteLog 'Copying drivers'
+                Write-Warning 'Copying Drivers - dism will pop a window with no progress. This can take a few minutes to complete. This is done so drivers are logged to the scriptlog.txt file. Please be patient.'
+                Start-Process -FilePath dism.exe -ArgumentList "/Image:$MountPath", "/Add-Driver", "/Driver:""$Drivers""", "/Recurse" -Wait -NoNewWindow
+                WriteLog 'Copying drivers succeeded'
+            }
         }
         else {
             $driverPath = Get-LocalDrivers -Model $model
@@ -554,9 +556,9 @@ if ($Unattend -and $UnattendPrefix) {
     $autopilotContent = Get-Content -Path $registerAutopilotPath
     WriteLog 'Unattend file found with prefixes.txt. Getting prefixes.'
     $deploymentTeams = @{
-        1 = "Service Desk"
-        2 = "Field Services"
-        3 = "Griffin Campus"
+        "1" = "Service Desk"
+        "2" = "Field Services"
+        "3" = "Griffin Campus"
     }
     do {
         Write-Host @"
@@ -582,7 +584,8 @@ Please select the deployment team:
             $sharedDeviceType = Read-Host 'Is this an A/V or computer lab device? [Y]es or [N]o'
         } until ($sharedDeviceType -match '^[YyNn]$')
         if ($sharedDeviceType.ToUpperInvariant() -eq 'N') {
-            Move-Item -Path "$PPKGFolder\IntuneEnroll.ppkg.bak" -Destination "$USBDrive\IntuneEnroll.ppkg"
+            Copy-Item -Path "$PPKGFolder\IntuneEnroll.ppkg.bak" -Destination "$USBDrive\IntuneEnroll.ppkg.bak"
+            Rename-Item -Path "$USBDrive\IntuneEnroll.ppkg.bak" -NewName "IntuneEnroll.ppkg"
         }
     }
     if ($deploymentTeam -eq "Field Services") {
@@ -597,12 +600,12 @@ Please select the deployment team:
     }
     switch ($deploymentTeam) {
         "Service Desk" {
-            $groupTag = $isSharedDevice ? "CAES-SHARED" : "CAESATH"
+            $groupTag = if ($isSharedDevice) { "CAES-SHARED" } else { "CAESATH" }
             $registerAutopilot = !$isSharedDevice
             $autopilot = $false
         }
         "Field Services" {
-            $groupTag = $isSharedDevice ? "CAES-SHARED" : "CAESFLD"
+            $groupTag = if ($isSharedDevice) { "CAES-SHARED" } else { "CAESFLD" }
             $registerAutopilot = !$isSharedDevice
             if ($registerAutopilot) {
                 $autopilotContent = $autopilotContent -replace '\[bool\]\$Assign = \$true', "[bool]`$Assign = `$false"
@@ -940,11 +943,13 @@ if ($computername) {
 }
 # Apply PPKG
 $provisioningFolder = Join-Path -Path $USBDrive -ChildPath "Provisioning"
-if (Test-Path -Path $provisioningFolder -PathType Container -and (Get-ChildItem -Path $provisioningFolder | Measure-Object).Count -gt 0) {
-    $provisioningPackages = Get-ChildItem -Path $provisioningPath -Filter "*.ppkg"
-    if ($provisioningPackages) {
-        foreach ($provisioningPackage in $provisioningPackages) {
-            Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$($provisioningPackage.FullName)" -Wait -NoNewWindow
+if (Test-Path -Path $provisioningFolder -PathType Container) {
+    if ((Get-ChildItem -Path $provisioningFolder | Measure-Object).Count -gt 0) {
+        $provisioningPackages = Get-ChildItem -Path $provisioningFolder -Filter "*.ppkg"
+        if ($provisioningPackages) {
+            foreach ($provisioningPackage in $provisioningPackages) {
+                Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$($provisioningPackage.FullName)" -Wait -NoNewWindow
+            }
         }
     }
 }
