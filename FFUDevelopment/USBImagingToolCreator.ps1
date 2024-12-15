@@ -185,7 +185,7 @@ if ($DeployISOPath) {
                     Robocopy $SFolder $DFolder /E /COPYALL /R:5 /W:5 /J
                 }
                 WriteLog "Start job to copy all provisioning files to $Destination"
-                Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $PPKGPath, "$Destination" | Out-Null
+                Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $ProvisioningPath, "$Destination" | Out-Null
             }
         }
         if ($Drivers) {
