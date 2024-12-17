@@ -595,7 +595,7 @@ Please select the deployment team:
         if ($localAccount.ToUpperInvariant() -eq 'Y') {
             $username = Read-Host 'Type in the username'
             $password = Read-Host 'Type in the password'
-            $SetupCompleteData += "`nnet user $username $password /add && net localgroup Administrators $username /add && wmic useraccount where name=$username set PasswordExpires=false"
+            $SetupCompleteData += "`nnet user $username $password /add && net localgroup Administrators $username /add && wmic useraccount where name=`'$username`' set PasswordExpires=false"
         }
     }
     switch ($deploymentTeam) {
@@ -955,7 +955,7 @@ if (Test-Path -Path $provisioningFolder -PathType Container) {
 }
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
-if (Test-Path -Path $Drivers -PathType Container) {
+if ((Test-Path -Path $Drivers -PathType Container) -and ($deploymentTeam -ne "Field Services")) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
 if ($registerAutopilot) {
@@ -978,9 +978,9 @@ if ($registerAutopilot) {
     }
     $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
     $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
-    New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
-    Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 }
+New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
+Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 WriteLog "Copying dism log to $LogFileDir"
 Invoke-Process xcopy "X:\Windows\logs\dism\dism.log $LogFileDir /Y" 
 WriteLog "Copying dism log to $LogFileDir succeeded"

@@ -41,6 +41,15 @@ Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
 
 Once the command finishes running, restart the computer.
 
+If the device running the project is under the protection of any AV/EDR/XDR program, ensure that the following paths are excluded:
+`C:\FFUDevelopment\*`
+`%ProgramFiles(x86)%\Windows Kits\*`
+
+If the device is under the protection of Defender's Attack Surface Reduction rules, ensure that the **Block use of copied or impersonated system tools** rule is set to audit mode or is excluding `W:\*` in addition to the above paths. Since W: is the Windows partition on the VHDX, programs contained within it will appear as "copied or impersonated" system tools and the image creation process will be interrupted by the intervention of Defender. Additionally, exclude the path `%windir%\system32\WindowsPowerShell\v1.0\powershell.exe` for the **Block process creations originating from PSExec and WMI commands** rule.
+<p align="left">
+  <img src="Image/Media/ASR-screenshot.png"/>
+</p>
+
 ## Getting Started
 
 If you're not familiar with Github, you can click the Green code button above and select download zip. Extract the zip file and make sure to copy the FFUDevelopment folder to the root of your C: drive. That will make it easy to follow the guide and allow the scripts to work properly.

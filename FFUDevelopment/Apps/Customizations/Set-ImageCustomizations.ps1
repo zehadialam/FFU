@@ -125,10 +125,14 @@ function Set-PublicDesktopContents {
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Firefox.lnk",
         "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Zoom\Zoom Workplace.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Cisco\Cisco AnyConnect Secure Mobility Client\Cisco AnyConnect Secure Mobility Client.lnk"
+        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Cisco\Cisco AnyConnect Secure Mobility Client\Cisco AnyConnect Secure Mobility Client.lnk",
+        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Foxit PDF Editor\Foxit PDF Editor.lnk",
+        "$env:windir\agdb\Data Transfer.lnk"
     )
     foreach ($desktopApp in $publicDesktopApps) {
-        Copy-Item -Path $desktopApp -Destination $publicDesktopPath -Force
+        if (Test-Path -Path $desktopApp -PathType Leaf) {
+            Copy-Item -Path $desktopApp -Destination $publicDesktopPath -Force
+        }
     }
     Copy-CustomizationFile -SourcePath "$customizationsFolder\ITSupport.ico" -DestinationPath "$env:windir\System32"
     $requestITSupportShortcut = Build-InternetShortcut -Url "https://uga.teamdynamix.com/TDClient/2060/Portal/Requests/ServiceCatalog?CategoryID=3478" -IconFile "$env:windir\System32\ITsupport.ico"
