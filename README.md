@@ -41,11 +41,14 @@ Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
 
 Once the command finishes running, restart the computer.
 
-If the device running the project is under the protection of any AV/EDR/XDR program, ensure that the following paths are excluded:
+*Note: Carry out the following only after proper consultation and permissions from the Information Security team of your organization.*
+
+If the device running the project is under the protection of any AV/EDR/XDR program, ensure that the following paths are excluded for your device:
 `C:\FFUDevelopment\*`
 `%ProgramFiles(x86)%\Windows Kits\*`
 
-If the device is under the protection of Defender's Attack Surface Reduction rules, ensure that the **Block use of copied or impersonated system tools** rule is set to audit mode or is excluding `W:\*` in addition to the above paths. Since W: is the Windows partition on the VHDX, programs contained within it will appear as "copied or impersonated" system tools and the image creation process will be interrupted by the intervention of Defender. Additionally, exclude the path `%windir%\system32\WindowsPowerShell\v1.0\powershell.exe` for the **Block process creations originating from PSExec and WMI commands** rule.
+If the device is under the protection of Defender's Attack Surface Reduction rules, ensure that the **Block use of copied or impersonated system tools** rule excludes `W:\*` in addition to the above paths. Since W: is the Windows partition on the VHDX, programs contained within it will appear as "copied or impersonated" system tools and the image creation process will be interrupted by the intervention of Defender. Additionally, exclude the path `%windir%\system32\WindowsPowerShell\v1.0\powershell.exe` for the **Block process creations originating from PSExec and WMI commands** rule. No action is required if these attack surface reduction rules are unconfigured by your organization.
+
 <p align="left">
   <img src="Image/Media/ASR-screenshot.png"/>
 </p>
