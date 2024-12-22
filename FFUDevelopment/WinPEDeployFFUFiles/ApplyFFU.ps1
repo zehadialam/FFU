@@ -958,27 +958,25 @@ Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -Mount
 if ((Test-Path -Path $Drivers -PathType Container) -and ($deploymentTeam -ne "Field Services")) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
-if ($registerAutopilot) {
-    $autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
-    $autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
-    $autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
-    $autopilotFiles = @(
-        $autopilotexe,
-        $autopilotGroupMapping,
-        $autopilotCleanup
-    )
-    if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
-        New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
-    }
-    foreach ($file in $autopilotFiles) {
-        if (-not (Test-Path -Path $file -PathType Leaf)) {
-            throw "$file not found"
-        }
-        Copy-Item -Path $file -Destination "W:\Autopilot" -Force
-    }
-    $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
-    $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
+$autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
+$autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
+$autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
+$autopilotFiles = @(
+    $autopilotexe,
+    $autopilotGroupMapping,
+    $autopilotCleanup
+)
+if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
+    New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
 }
+foreach ($file in $autopilotFiles) {
+    if (-not (Test-Path -Path $file -PathType Leaf)) {
+        throw "$file not found"
+    }
+    Copy-Item -Path $file -Destination "W:\Autopilot" -Force
+}
+$autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
+$SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
 New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
 Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 WriteLog "Copying dism log to $LogFileDir"

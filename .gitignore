@@ -1,4 +1,4 @@
-FFUDevelopment/Autopilot/*.json
+FFUDevelopment/Autopilot/AutoPilotConfigurationFile.json
 FFUDevelopment/Apps/Customizations/*.bin
 FFUDevelopment/PPKG/NotForIntune
 FFUDevelopment/PPKG/*.ppkg

@@ -49,6 +49,11 @@ DisableSoftLanding
 DWORD:1
 
 Computer
+SOFTWARE\Policies\Microsoft\Windows\CloudContent
+DisableWindowsConsumerFeatures
+DWORD:1
+
+Computer
 SOFTWARE\Policies\Microsoft\Windows\Personalization
 LockScreenOverlaysDisabled
 DWORD:1

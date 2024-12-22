@@ -14,6 +14,9 @@
  .PARAMETER GroupTag
    The group tag to assign to the device in Autopilot.
 
+ .PARAMETER AddToGroup
+   Whether to add the device to a group based on the AutopilotGroupMapping.json file.
+
  .PARAMETER Assign
    Whether to wait for the Autopilot profile to be assigned. Defaults to $true.
 
@@ -38,6 +41,7 @@
 
 param (
     [string]$GroupTag,
+    [bool]$AddToGroup = $true,
     [bool]$Assign = $true,
     [bool]$Sysprep = $true
 )
@@ -82,6 +86,26 @@ function Get-AzureAdDeviceId {
         $azureAdDeviceId = $intuneDevice.AzureAdDeviceId
         return $azureAdDeviceId
     }
+}
+
+function Get-EntraDevice {
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ComputerName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SerialNumber
+    )
+    $azureAdDeviceId = Get-AzureAdDeviceId -SerialNumber $SerialNumber
+    $entraDeviceResult = if ($azureAdDeviceId) {
+        Get-MgDevice -Filter "DeviceId eq '$azureAdDeviceId'"
+    }
+    else {
+        Get-MgDevice -Filter "displayName eq '$computerName'"
+    }
+    return $entraDeviceResult
 }
 
 function Remove-IntuneDeviceRecord {
@@ -136,13 +160,7 @@ function Remove-EntraDeviceRecord {
         [string]$SerialNumber
     )
     Write-Host "Checking if device already exists in Entra..." -ForegroundColor Yellow
-    $azureAdDeviceId = Get-AzureAdDeviceId -SerialNumber $SerialNumber
-    $entraDeviceResult = if ($azureAdDeviceId) {
-        Get-MgDevice -Filter "DeviceId eq '$azureAdDeviceId'"
-    }
-    else {
-        Get-MgDevice -Filter "displayName eq '$computerName'"
-    }
+    $entraDeviceResult = Get-EntraDevice -ComputerName $ComputerName -SerialNumber $SerialNumber
     if (-not $entraDeviceResult) {
         Write-Host "Device with name $computerName does not already exist in Entra." -ForegroundColor Green
         return
@@ -309,6 +327,21 @@ try {
 
     Install-RequiredModules
 
+    $manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
+    $model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
+    $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+    $computerName = $env:COMPUTERNAME
+    $deviceHardwareData = (Get-CimInstance -Namespace root/cimv2/mdm/dmmap -Class MDM_DevDetail_Ext01 -Filter "InstanceID='Ext' AND ParentID='./DevDetail'").DeviceHardwareData
+    $hardwareIdentifier = [System.Convert]::FromBase64String($deviceHardwareData)
+
+    $entraDeviceResult = Get-EntraDevice -ComputerName $ComputerName -SerialNumber $SerialNumber
+    if ($entraDeviceResult.EnrollmentType -eq "AzureADJoinUsingDeviceAuth") {
+        Write-Host "This device has a self-deploying Autopilot profile assigned. You may close the command prompt window." -ForegroundColor Yellow
+        Remove-Item -Path "C:\Autopilot" -Recurse -Force
+        Remove-Item -Path "C:\Windows\Setup\Scripts" -Recurse -Force
+        exit
+    }
+
     do {
         $prompt = Read-Host "`nPress Enter to log in with your administrative Entra account"
     } while ($prompt -ne "")
@@ -322,13 +355,6 @@ try {
     )
     
     Connect-MgGraph -Scopes $scopes -NoWelcome
-
-    $manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
-    $model = (Get-CimInstance -ClassName Win32_ComputerSystem).Model
-    $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
-    $computerName = $env:COMPUTERNAME
-    $deviceHardwareData = (Get-CimInstance -Namespace root/cimv2/mdm/dmmap -Class MDM_DevDetail_Ext01 -Filter "InstanceID='Ext' AND ParentID='./DevDetail'").DeviceHardwareData
-    $hardwareIdentifier = [System.Convert]::FromBase64String($deviceHardwareData)
     
     Write-Host "`nDevice manufacturer is $manufacturer" -ForegroundColor Yellow
     Write-Host "Device model is $model" -ForegroundColor Yellow
@@ -341,9 +367,6 @@ try {
     Wait-EntraDeviceRecord -SerialNumber $serialNumber
     Add-SecurityGroupMember -SerialNumber $serialNumber
     Wait-AutopilotProfileAssignment -SerialNumber $serialNumber
-
-    Write-Host "`nActivating Windows..." -ForegroundColor Yellow
-    Start-Process -FilePath "$env:windir\System32\cscript.exe" -ArgumentList "$env:windir\System32\slmgr.vbs /ato" -Wait -NoNewWindow
 
     if ($Sysprep) {
         New-CleanupScheduledTask
