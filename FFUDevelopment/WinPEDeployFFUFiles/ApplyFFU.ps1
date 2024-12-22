@@ -463,7 +463,7 @@ $LogFileDir = Join-Path -Path $USBDrive -ChildPath "logs"
 New-Item -Path $LogFileDir -ItemType Directory -Force | Out-Null
 New-item -Path $LogFileDir -Name $LogFileName -ItemType "file" -Force | Out-Null
 $LogFile = Join-Path -Path $LogFileDir -ChildPath $LogFilename
-$version = '2408.1'
+$version = '2412.1'
 WriteLog 'Begin Logging'
 WriteLog "Script version: $version"
 $hardDrive = Get-HardDrive
