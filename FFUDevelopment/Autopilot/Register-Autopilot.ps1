@@ -334,14 +334,6 @@ try {
     $deviceHardwareData = (Get-CimInstance -Namespace root/cimv2/mdm/dmmap -Class MDM_DevDetail_Ext01 -Filter "InstanceID='Ext' AND ParentID='./DevDetail'").DeviceHardwareData
     $hardwareIdentifier = [System.Convert]::FromBase64String($deviceHardwareData)
 
-    $entraDeviceResult = Get-EntraDevice -ComputerName $ComputerName -SerialNumber $SerialNumber
-    if ($entraDeviceResult.EnrollmentType -eq "AzureADJoinUsingDeviceAuth") {
-        Write-Host "This device has a self-deploying Autopilot profile assigned. You may close the command prompt window." -ForegroundColor Yellow
-        Remove-Item -Path "C:\Autopilot" -Recurse -Force
-        Remove-Item -Path "C:\Windows\Setup\Scripts" -Recurse -Force
-        exit
-    }
-
     do {
         $prompt = Read-Host "`nPress Enter to log in with your administrative Entra account"
     } while ($prompt -ne "")
@@ -360,6 +352,14 @@ try {
     Write-Host "Device model is $model" -ForegroundColor Yellow
     Write-Host "Device serial number is $serialNumber" -ForegroundColor Yellow
     Write-Host "Device name is $computerName" -ForegroundColor Yellow
+
+    $entraDeviceResult = Get-EntraDevice -ComputerName $ComputerName -SerialNumber $SerialNumber
+    if ($entraDeviceResult.EnrollmentType -eq "AzureADJoinUsingDeviceAuth") {
+        Write-Host "This device has a self-deploying Autopilot profile assigned. You may close the command prompt window." -ForegroundColor Yellow
+        Remove-Item -Path "C:\Autopilot" -Recurse -Force
+        Remove-Item -Path "C:\Windows\Setup\Scripts" -Recurse -Force
+        exit
+    }
 
     Remove-IntuneDeviceRecord -SerialNumber $serialNumber
     Remove-EntraDeviceRecord -ComputerName $computerName -SerialNumber $serialNumber
