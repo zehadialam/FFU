@@ -62,3 +62,18 @@ Computer
 SOFTWARE\Policies\Microsoft\Windows\Windows Chat
 ChatIcon
 DWORD:3
+
+Computer
+SOFTWARE\Policies\Microsoft\FVE
+EncryptionMethodWithXtsFdv
+DWORD:7
+
+Computer
+SOFTWARE\Policies\Microsoft\FVE
+EncryptionMethodWithXtsOs
+DWORD:7
+
+Computer
+SOFTWARE\Policies\Microsoft\FVE
+EncryptionMethodWithXtsRdv
+DWORD:7
