@@ -3225,7 +3225,11 @@ function Optimize-FFUCaptureDrive {
         $osPartition = $mountedDisk | Get-Partition | Where-Object { $_.GptType -eq "{ebd0a0a2-b9e5-4433-87c0-68b6b72699c7}" }
         WriteLog 'Defragmenting Windows partition...'
         Optimize-Volume -DriveLetter $osPartition.DriveLetter -Defrag -NormalPriority
-        WriteLog 'Performing slab consolidation on Windows partition...'
+        WriteLog 'Performing slab consolidation and retrim on Windows partition...'
+        Optimize-Volume -DriveLetter $osPartition.DriveLetter -SlabConsolidate -ReTrim -NormalPriority
+        WriteLog 'Defragmenting Windows partition again after slab consolidation and retrim...'
+        Optimize-Volume -DriveLetter $osPartition.DriveLetter -Defrag -NormalPriority
+        WriteLog 'Performing slab consolidation on Windows partition again...'
         Optimize-Volume -DriveLetter $osPartition.DriveLetter -SlabConsolidate -NormalPriority
         WriteLog 'Dismounting VHDX'
         Dismount-ScratchVhdx -VhdxPath $VhdxPath

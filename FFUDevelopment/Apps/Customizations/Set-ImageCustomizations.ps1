@@ -134,11 +134,11 @@ function Set-PublicDesktopContents {
             Copy-Item -Path $desktopApp -Destination $publicDesktopPath -Force
         }
     }
-    Copy-CustomizationFile -SourcePath "$customizationsFolder\ITSupport.ico" -DestinationPath "$env:windir\System32"
+    Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\ITSupport.ico" -DestinationPath "$env:windir\System32"
     $requestITSupportShortcut = Build-InternetShortcut -Url "https://uga.teamdynamix.com/TDClient/3159/KB/Requests/ServiceCatalog" -IconFile "$env:windir\System32\ITsupport.ico"
     $requestITSupportShortcutPath = Join-Path -Path $publicDesktopPath -ChildPath "Request IT Support.url"
     Set-Content -Path $requestITSupportShortcutPath -Value $requestITSupportShortcut
-    Copy-CustomizationFile -SourcePath "$customizationsFolder\UGA.ico" -DestinationPath "$env:windir\System32"
+    Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\UGA.ico" -DestinationPath "$env:windir\System32"
     $eitsKBShortcut = Build-InternetShortcut -Url "https://uga.teamdynamix.com/TDClient/3190/eitsclientportal/KB/" -IconFile "$env:windir\System32\UGA.ico"
     $eitsKBShortcutPath = Join-Path -Path $publicDesktopPath -ChildPath "EITS Knowledgebase.url"
     Set-Content -Path $eitsKBShortcutPath -Value $eitsKBShortcut
@@ -146,10 +146,10 @@ function Set-PublicDesktopContents {
 
 $customizationsFolder = "D:\Customizations"
 Remove-UWPApps
-Copy-CustomizationFile -SourcePath "$customizationsFolder\lockscreen.jpg" -DestinationPath "$env:windir\Web\Screen"
+Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\lockscreen.jpg" -DestinationPath "$env:windir\Web\Screen"
 # https://learn.microsoft.com/en-us/windows/win32/controls/themesfileformat-overview
 # https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/set-dark-mode
-Copy-CustomizationFile -SourcePath "$customizationsFolder\oem.theme" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
+Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\oem.theme" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
 Set-PolicySettings -SettingsFile "$customizationsFolder\RegistrySettings.json"
 Set-SecurityBaselines -CustomizationsFolder $customizationsFolder
 @(
@@ -158,4 +158,10 @@ Set-SecurityBaselines -CustomizationsFolder $customizationsFolder
 ) | Where-Object { Test-Path $_ } | ForEach-Object { Remove-Item -Path $_ -Force }
 Add-LocalGroupMember -Group "Administrators" -Member "S-1-12-1-3698080277-1147366962-2456473244-1386568132"
 DISM /Online /Import-DefaultAppAssociations:"""$customizationsFolder\DefaultAppAssociations.xml"""
+$provisioningPackages = Get-ChildItem -Path $customizationsFolder -Filter "*.ppkg"
+if ($provisioningPackages) {
+    foreach ($provisioningPackage in $provisioningPackages) {
+        DISM /Online /Add-ProvisioningPackage /PackagePath:"""$($provisioningPackage.FullName)"""
+    }
+}
 Set-PublicDesktopContents

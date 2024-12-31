@@ -941,18 +941,6 @@ if ($computername) {
         throw $_
     }   
 }
-# Apply PPKG
-$provisioningFolder = Join-Path -Path $USBDrive -ChildPath "Provisioning"
-if (Test-Path -Path $provisioningFolder -PathType Container) {
-    if ((Get-ChildItem -Path $provisioningFolder | Measure-Object).Count -gt 0) {
-        $provisioningPackages = Get-ChildItem -Path $provisioningFolder -Filter "*.ppkg"
-        if ($provisioningPackages) {
-            foreach ($provisioningPackage in $provisioningPackages) {
-                Start-Process -FilePath dism.exe -ArgumentList "/Image=W:\ /Add-ProvisioningPackage /PackagePath:$($provisioningPackage.FullName)" -Wait -NoNewWindow
-            }
-        }
-    }
-}
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
 if ((Test-Path -Path $Drivers -PathType Container) -and ($deploymentTeam -ne "Field Services")) {

@@ -57,7 +57,6 @@ if ($DeployISOPath) {
         $Autopilot = Get-ChildItem -Path $AutopilotPath -Recurse
         $Unattend = Get-ChildItem -Path $UnattendPath -Recurse
         $PPKG = Get-ChildItem -Path $PPKGPath -Recurse
-        $Provisioning = Get-ChildItem -Path $ProvisioningPath -Recurse
         $DrivesCount = $Drives.Count
         Write-ProgressLog "Create Imaging Tool" "Creating partitions..."
         writelog "Create job to partition each usb drive"
@@ -185,26 +184,6 @@ if ($DeployISOPath) {
                 Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $PPKGPath, "$Destination" | Out-Null
             }
         }
-        if ($Provisioning) {
-            foreach ($Drive in $DeployDrives) {
-                WriteLog "Create provisioning directory"
-                $drivepath = $Drive + ":\"
-                New-Item -Path "$drivepath" -Name Provisioning -ItemType Directory -Force -Confirm: $false | Out-Null
-            }
-            writelog "Copying PPKG files to all drives labeled deploy concurrently"
-            foreach ($Drive in $DeployDrives) {
-                $Destination = $Drive + ":\Provisioning"
-                $jobScriptBlock = {
-                    param (
-                        [string]$SFolder,
-                        [string]$DFolder
-                    )
-                    Robocopy $SFolder $DFolder /E /COPYALL /R:5 /W:5 /J
-                }
-                WriteLog "Start job to copy all provisioning files to $Destination"
-                Start-Job -ScriptBlock $jobScriptBlock -ArgumentList $ProvisioningPath, "$Destination" | Out-Null
-            }
-        }
         if ($Drivers) {
             writelog "Copying driver files to all drives labeled deploy concurrently"
             foreach ($Drive in $DeployDrives) {
@@ -241,8 +220,7 @@ if ($DeployISOPath) {
             [String]$DriversPath = "$DevelopmentPath\Drivers",
             [String]$AutopilotPath = "$DevelopmentPath\Autopilot",
             [String]$UnattendPath = "$DevelopmentPath\Unattend",
-            [String]$PPKGPath = "$DevelopmentPath\PPKG",
-            [String]$ProvisioningPath = "$DevelopmentPath\Provisioning"    
+            [String]$PPKGPath = "$DevelopmentPath\PPKG"  
         )
   
         $Drivelist = @()
