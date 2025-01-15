@@ -41,6 +41,12 @@
             "RegValueName": "CreateDesktopShortcutDefault",
             "RegValueType": "DWORD",
             "RegValueData": 0
+        },
+        {
+            "RegPath": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+            "RegValueName": "DisableIPSourceRouting",
+            "RegValueType": "DWORD",
+            "RegValueData": 2
         }
     ]
 }

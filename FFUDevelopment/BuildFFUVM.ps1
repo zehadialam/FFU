@@ -3227,10 +3227,6 @@ function Optimize-FFUCaptureDrive {
         Optimize-Volume -DriveLetter $osPartition.DriveLetter -Defrag -NormalPriority
         WriteLog 'Performing slab consolidation and retrim on Windows partition...'
         Optimize-Volume -DriveLetter $osPartition.DriveLetter -SlabConsolidate -ReTrim -NormalPriority
-        WriteLog 'Defragmenting Windows partition again after slab consolidation and retrim...'
-        Optimize-Volume -DriveLetter $osPartition.DriveLetter -Defrag -NormalPriority
-        WriteLog 'Performing slab consolidation on Windows partition again...'
-        Optimize-Volume -DriveLetter $osPartition.DriveLetter -SlabConsolidate -NormalPriority
         WriteLog 'Dismounting VHDX'
         Dismount-ScratchVhdx -VhdxPath $VhdxPath
         WriteLog 'Mounting VHDX as read-only for optimization'
