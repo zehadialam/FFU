@@ -3008,9 +3008,6 @@ function Get-WinPEDellDriverPack {
     param (
         [string]$DestinationPath
     )
-    if (-not (Get-Module -ListAvailable -Name OSD)) {
-        Install-Module -Name OSD -Force -Confirm:$false
-    }
     Import-Module OSD
     $driverPackUrl = Get-DellWinPEDriverPack
     Start-BitsTransferWithRetry -Source $driverPackUrl -Destination $DestinationPath
@@ -3060,6 +3057,9 @@ function Add-PSModules {
         Copy-Item -Path $dependency -Destination $dellBIOSProviderWinPEPath -Force
     }
     $osdPath = Join-Path $SourcePath -ChildPath "OSD"
+    if (-not (Get-Module -ListAvailable -Name OSD)) {
+        Install-Module -Name OSD -Force -Confirm:$false
+    }
     Copy-Item -Path $osdPath -Destination $DestinationPath -Recurse -Force
 }
 
