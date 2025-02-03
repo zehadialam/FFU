@@ -1,38 +1,9 @@
 function Remove-UWPApps {
-    $provisionedAppPackageNames = @(
-        "Clipchamp.Clipchamp",
-        "Microsoft.549981C3F5F10",
-        "Microsoft.BingNews",
-        "Microsoft.BingWeather",
-        "Microsoft.Copilot",
-        "Microsoft.GamingApp",
-        "Microsoft.GetHelp",
-        "Microsoft.Getstarted",
-        "Microsoft.Microsoft3DViewer",
-        "Microsoft.MicrosoftOfficeHub",
-        "Microsoft.MicrosoftSolitaireCollection",
-        "Microsoft.MicrosoftStickyNotes",
-        "Microsoft.MixedReality.Portal",
-        "Microsoft.OutlookForWindows"
-        "Microsoft.People",
-        "Microsoft.PowerAutomateDesktop",
-        "Microsoft.Todos",
-        "Microsoft.Windows.DevHome",
-        "Microsoft.WindowsAlarms",
-        "microsoft.windowscommunicationsapps",
-        "Microsoft.WindowsFeedbackHub",
-        "Microsoft.WindowsMaps",
-        "Microsoft.WindowsSoundRecorder",
-        "Microsoft.Xbox.TCUI",
-        "Microsoft.XboxGameOverlay",
-        "Microsoft.XboxGamingOverlay",
-        "Microsoft.XboxIdentityProvider",
-        "Microsoft.XboxSpeechToTextOverlay",
-        "Microsoft.YourPhone",
-        "Microsoft.ZuneMusic",
-        "Microsoft.ZuneVideo",
-        "MicrosoftCorporationII.QuickAssist"
-    )
+    $inboxApps = ".\InboxApps.json"
+    if (-not (Test-Path -Path $InboxApps -PathType Leaf)) {
+        return
+    }
+    $provisionedAppPackageNames = Get-Content -Path $inboxApps | ConvertFrom-Json
     $provisionedStoreApps = (Get-AppXProvisionedPackage -Online).DisplayName
     try {
         foreach ($provisionedAppName in $provisionedAppPackageNames) {
