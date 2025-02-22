@@ -102,9 +102,6 @@ function Get-EntraDevice {
     $entraDeviceResult = if ($azureAdDeviceId) {
         Get-MgDevice -Filter "DeviceId eq '$azureAdDeviceId'"
     }
-    else {
-        Get-MgDevice -Filter "displayName eq '$computerName'"
-    }
     return $entraDeviceResult
 }
 
@@ -162,18 +159,13 @@ function Remove-EntraDeviceRecord {
     Write-Host "Checking if device already exists in Entra..." -ForegroundColor Yellow
     $entraDeviceResult = Get-EntraDevice -ComputerName $ComputerName -SerialNumber $SerialNumber
     if (-not $entraDeviceResult) {
-        Write-Host "Device with name $computerName does not already exist in Entra." -ForegroundColor Green
+        Write-Host "Device with name $computerName and serial number $SerialNumber does not already exist in Entra." -ForegroundColor Green
         return
     }
-    Write-Host "Found device in Entra with the name $computerName. Checking if device record needs deletion..." -ForegroundColor Yellow
+    Write-Host "Found device in Entra with the name $ComputerName and serial number $SerialNumber." -ForegroundColor Yellow
     foreach ($entraDevice in $entraDeviceResult) {
-        # $enrollmentType = $entraDevice.EnrollmentType
-        # AzureADJoinUsingWhiteGlove
-        # if ($enrollmentType -eq "AzureDomainJoined") {
-        #     Write-Host "Device enrollment type is $enrollmentType and does not require deletion." -ForegroundColor Green
-        #     continue
-        # }
-        # Write-Host "Device enrollment type is $enrollmentType and requires deletion." -ForegroundColor Yellow
+        $enrollmentType = $entraDevice.EnrollmentType
+        Write-Host "Device enrollment type is $enrollmentType." -ForegroundColor Yellow
         Remove-AutopilotDeviceRecord -SerialNumber $serialNumber
         Write-Host "Deleting Entra device record..." -ForegroundColor Yellow
         Remove-MgDevice -DeviceId $entraDevice.Id -ErrorAction Stop
@@ -190,7 +182,7 @@ function Remove-EntraDeviceRecord {
 
 function Add-AutopilotDeviceRecord {
     param (
-        [byte[]]$HardwareIdentifier,
+        [string]$HardwareIdentifier,
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$SerialNumber,
@@ -200,10 +192,24 @@ function Add-AutopilotDeviceRecord {
     $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
     if (-not $autopilotDevice) {
         Write-Host "Device is not registered with Autopilot. Registering device with the group tag $GroupTag..." -ForegroundColor Yellow
-        $hardwareIdentifierInputFile = Join-Path -Path $env:TEMP -ChildPath "devicehardwaredata.txt"
-        [System.IO.File]::WriteAllBytes($hardwareIdentifierInputFile, $HardwareIdentifier)
-        New-MgDeviceManagementImportedWindowsAutopilotDeviceIdentity -GroupTag $GroupTag -HardwareIdentifierInputFile $hardwareIdentifierInputFile -SerialNumber $SerialNumber | Out-Null
-        Remove-Item -Path $hardwareIdentifierInputFile -Force
+        $uri = "https://graph.microsoft.com/beta/deviceManagement/importedWindowsAutopilotDeviceIdentities"
+        $body = @{
+            "@odata.type" = "#microsoft.graph.importedWindowsAutopilotDeviceIdentity"
+            "groupTag" = $groupTag
+            "serialNumber" = $serialNumber
+            "productKey" = ""
+            "hardwareIdentifier" = $hardwareIdentifier
+            "assignedUserPrincipalName" = ""
+            "state" = @{
+                "@odata.type" = "microsoft.graph.importedWindowsAutopilotDeviceIdentityState"
+                "deviceImportStatus" = "pending"
+                "deviceRegistrationId" = ""
+                "deviceErrorCode" = 0
+                "deviceErrorName" = ""
+            }
+        }
+        $jsonBody = $body | ConvertTo-Json -Depth 3
+        Invoke-MgGraphRequest -Uri $uri -Method Post -Body $jsonBody -ContentType "application/json"
         do {
             $autopilotDevice = Get-MgDeviceManagementWindowsAutopilotDeviceIdentity -Filter "contains(serialNumber,'$serialNumber')" -ErrorAction Stop
             if (-not $autopilotDevice) {
@@ -273,7 +279,13 @@ function Add-SecurityGroupMember {
     }
     $entraDeviceInGroup = Get-MgGroupMember -GroupId $securityGroup.Id | Where-Object { $_.Id -eq $entraDevice.Id }
     if (-not $entraDeviceInGroup) {
-        New-MgGroupMember -GroupId $securityGroup.Id -DirectoryObjectId $entraDevice.Id
+        # New-MgGroupMember -GroupId $securityGroup.Id -DirectoryObjectId $entraDevice.Id
+        $groupuri = "https://graph.microsoft.com/beta/groups/$($securityGroup.Id)/members/`$ref"
+        $body = @{
+            "@odata.id" = "https://graph.microsoft.com/beta/directoryObjects/$($entraDevice.Id)"
+        }
+        $jsonBody = $body | ConvertTo-Json -Depth 2
+        Invoke-MgGraphRequest -Method POST -Uri $groupuri -Body $jsonBody -ContentType "application/json" -OutputType PSObject
         Write-Host "Added device to the $securityGroupName group`n" -ForegroundColor Green
     }
     else {
@@ -332,7 +344,7 @@ try {
     $serialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
     $computerName = $env:COMPUTERNAME
     $deviceHardwareData = (Get-CimInstance -Namespace root/cimv2/mdm/dmmap -Class MDM_DevDetail_Ext01 -Filter "InstanceID='Ext' AND ParentID='./DevDetail'").DeviceHardwareData
-    $hardwareIdentifier = [System.Convert]::FromBase64String($deviceHardwareData)
+    # $hardwareIdentifier = [System.Convert]::FromBase64String($deviceHardwareData)
 
     do {
         $prompt = Read-Host "`nPress Enter to log in with your administrative Entra account"
@@ -363,7 +375,7 @@ try {
 
     Remove-IntuneDeviceRecord -SerialNumber $serialNumber
     Remove-EntraDeviceRecord -ComputerName $computerName -SerialNumber $serialNumber
-    Add-AutopilotDeviceRecord -HardwareIdentifier $hardwareIdentifier -SerialNumber $serialNumber -GroupTag $GroupTag
+    Add-AutopilotDeviceRecord -HardwareIdentifier $deviceHardwareData -SerialNumber $serialNumber -GroupTag $GroupTag
     Wait-EntraDeviceRecord -SerialNumber $serialNumber
     Add-SecurityGroupMember -SerialNumber $serialNumber
     Wait-AutopilotProfileAssignment -SerialNumber $serialNumber

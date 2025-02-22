@@ -336,7 +336,7 @@ function Update-DellBIOS {
             Write-Host "The latest BIOS version could not be determined. Skipping BIOS update." -ForegroundColor Yellow
             return
         }
-        if ($computerBiosVersion -ge $catalogBiosVersion) {
+        if ([version]$computerBiosVersion -ge [version]$catalogBiosVersion) {
             Write-Host "The current BIOS version $computerBiosVersion is the latest." -ForegroundColor Green
             return
         }
@@ -553,74 +553,25 @@ If (Test-Path -Path $UnattendPrefixPath) {
 #Ask for device name if unattend exists
 if ($Unattend -and $UnattendPrefix) {
     $registerAutopilotPath = Join-Path -Path $APFolder -ChildPath "Register-Autopilot.ps1"
-    $autopilotContent = Get-Content -Path $registerAutopilotPath
-    WriteLog 'Unattend file found with prefixes.txt. Getting prefixes.'
-    $deploymentTeams = @{
-        "1" = "Service Desk"
-        "2" = "Field Services"
-        "3" = "Griffin Campus"
+    if (Test-Path -Path $registerAutopilotPath -PathType Leaf) {
+        $autopilotContent = Get-Content -Path $registerAutopilotPath
     }
-    do {
-        Write-Host @"
-Please select the deployment team:
-====================================
-[1] Service Desk
-[2] Field Services
-[3] Griffin Campus
-====================================
-"@
-    $choice = Read-Host 'Enter the number corresponding to your choice'
-        $deploymentTeam = $deploymentTeams[$choice]
-        if (-not $deploymentTeam) {
-            Write-Host "Invalid selection. Pick a number from the above." -ForegroundColor Red
-        }
-    } until ($deploymentTeam)
+    WriteLog 'Unattend file found with prefixes.txt. Getting prefixes.'
     do {
         $deploymentType = Read-Host 'Is this a shared device? [Y]es or [N]o'
     } until ($deploymentType -match '^[YyNn]$')
     $isSharedDevice = $deploymentType.ToUpperInvariant() -eq 'Y'
+    $groupTag = if ($isSharedDevice) { "CAES-SHARED" } else { "CAESATH" }
+    $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
     if ($isSharedDevice) {
         do {
             $sharedDeviceType = Read-Host 'Is this an A/V or computer lab device? [Y]es or [N]o'
         } until ($sharedDeviceType -match '^[YyNn]$')
         if ($sharedDeviceType.ToUpperInvariant() -eq 'N') {
-            Copy-Item -Path "$PPKGFolder\IntuneEnroll.ppkg.bak" -Destination "$USBDrive\IntuneEnroll.ppkg.bak"
-            Rename-Item -Path "$USBDrive\IntuneEnroll.ppkg.bak" -NewName "IntuneEnroll.ppkg"
-        }
-    }
-    if ($deploymentTeam -eq "Field Services") {
-        do {
-            $localAccount = Read-Host 'Do you want to create a local account? [Y]es or [N]o'
-        } until ($localAccount -match '^[YyNn]$')
-        if ($localAccount.ToUpperInvariant() -eq 'Y') {
-            $username = Read-Host 'Type in the username'
-            $password = Read-Host 'Type in the password'
-            $SetupCompleteData += "`nnet user $username $password /add && net localgroup Administrators $username /add && wmic useraccount where name=`'$username`' set PasswordExpires=false"
-        }
-    }
-    switch ($deploymentTeam) {
-        "Service Desk" {
-            $groupTag = if ($isSharedDevice) { "CAES-SHARED" } else { "CAESATH" }
-            $registerAutopilot = !$isSharedDevice
-            $autopilot = $false
-        }
-        "Field Services" {
-            $groupTag = if ($isSharedDevice) { "CAES-SHARED" } else { "CAESFLD" }
-            $registerAutopilot = !$isSharedDevice
-            if ($registerAutopilot) {
-                $autopilotContent = $autopilotContent -replace '\[bool\]\$Assign = \$true', "[bool]`$Assign = `$false"
+            if (Test-Path -Path "$PPKGFolder\IntuneEnroll.ppkg.bak" -PathType Leaf) {
+                Copy-Item -Path "$PPKGFolder\IntuneEnroll.ppkg.bak" -Destination "$USBDrive\IntuneEnroll.ppkg"
             }
-            $autopilot = $true
         }
-        "Griffin Campus" {
-            $registerAutopilot = $false
-            $autopilot = $false
-        }
-    }
-    if ($groupTag) {
-        $autopilotContent = $autopilotContent -replace '\[string\]\$GroupTag,', "[string]`$GroupTag = `"$groupTag`","
-    }
-    if ($isSharedDevice -or $deploymentTeam -ne "Service Desk") {
         do {
             $computerName = Read-Host 'Type in the name of the computer'
             $computerName = $computerName -replace "\s", ""
@@ -943,28 +894,29 @@ if ($computername) {
 }
 #Add Drivers
 Install-Drivers -ComputerManufacturer $ComputerManufacturer -Model $Model -MountPath "W:\"
-if ((Test-Path -Path $Drivers -PathType Container) -and ($deploymentTeam -ne "Field Services")) {
+if (Test-Path -Path $Drivers -PathType Container) {
     Remove-Item -Path $Drivers -Recurse -Force
 }
-$autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
-$autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
-$autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
-$autopilotFiles = @(
-    $autopilotexe,
-    $autopilotGroupMapping,
-    $autopilotCleanup
-)
-if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
-    New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
-}
-foreach ($file in $autopilotFiles) {
-    if (-not (Test-Path -Path $file -PathType Leaf)) {
-        throw "$file not found"
+if ($autopilotContent) {
+    $autopilotexe = Join-Path -Path $APFolder -ChildPath "Autopilot.exe"
+    $autopilotGroupMapping = Join-Path -Path $APFolder -ChildPath "AutopilotGroupMapping.json"
+    $autopilotCleanup = Join-Path -Path $APFolder -ChildPath "Start-CleanupAndSysprep.ps1"
+    $autopilotFiles = @(
+        $autopilotexe,
+        $autopilotGroupMapping,
+        $autopilotCleanup
+    )
+    if (-not (Test-Path -Path "W:\Autopilot" -PathType Container)) {
+        New-Item -Path "W:\Autopilot" -ItemType Directory -Force | Out-Null
     }
-    Copy-Item -Path $file -Destination "W:\Autopilot" -Force
+    foreach ($file in $autopilotFiles) {
+        if (Test-Path -Path $file -PathType Leaf) {
+            Copy-Item -Path $file -Destination "W:\Autopilot" -Force
+        }
+    }
+    $autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
+    $SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
 }
-$autopilotContent | Set-Content -Path "W:\Autopilot\Register-Autopilot.ps1"
-$SetupCompleteData += "`npowershell.exe -command Start-Process -FilePath C:\Autopilot\Autopilot.exe"
 New-Item -Path "W:\Windows\Setup\Scripts" -ItemType Directory -Force | Out-Null
 Set-Content -Path "W:\Windows\Setup\Scripts\SetupComplete.cmd" -Value $SetupCompleteData -Force
 WriteLog "Copying dism log to $LogFileDir"
