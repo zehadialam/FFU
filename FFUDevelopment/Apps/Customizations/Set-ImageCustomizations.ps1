@@ -90,29 +90,46 @@ function Build-InternetShortcut {
 }
 
 function Set-PublicDesktopContents {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigFilePath
+    )
+    $config = Get-Content -Path $configFilePath | ConvertFrom-Json
     $publicDesktopPath = [Environment]::GetFolderPath("CommonDesktopDirectory")
     Get-ChildItem -Path $publicDesktopPath -File | Remove-Item -Force
-    $publicDesktopApps = @(
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Firefox.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Zoom\Zoom Workplace.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Cisco\Cisco AnyConnect Secure Mobility Client\Cisco AnyConnect Secure Mobility Client.lnk",
-        "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Foxit PDF Editor\Foxit PDF Editor.lnk",
-        "$env:windir\agdb\Data Transfer.lnk"
-    )
-    foreach ($desktopApp in $publicDesktopApps) {
-        if (Test-Path -Path $desktopApp -PathType Leaf) {
-            Copy-Item -Path $desktopApp -Destination $publicDesktopPath -Force
+    foreach ($desktopApp in $config.desktopApps) {
+        if (Test-Path -Path $desktopApp.source -PathType Leaf) {
+            Copy-Item -Path $desktopApp.source -Destination $publicDesktopPath -Force
         }
     }
-    Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\ITSupport.ico" -DestinationPath "$env:windir\System32"
-    $requestITSupportShortcut = Build-InternetShortcut -Url "https://uga.teamdynamix.com/TDClient/3159/KB/Requests/ServiceCatalog" -IconFile "$env:windir\System32\ITsupport.ico"
-    $requestITSupportShortcutPath = Join-Path -Path $publicDesktopPath -ChildPath "Request IT Support.url"
-    Set-Content -Path $requestITSupportShortcutPath -Value $requestITSupportShortcut
-    Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\UGA.ico" -DestinationPath "$env:windir\System32"
-    $eitsKBShortcut = Build-InternetShortcut -Url "https://uga.teamdynamix.com/TDClient/3190/eitsclientportal/KB/" -IconFile "$env:windir\System32\UGA.ico"
-    $eitsKBShortcutPath = Join-Path -Path $publicDesktopPath -ChildPath "EITS Knowledgebase.url"
-    Set-Content -Path $eitsKBShortcutPath -Value $eitsKBShortcut
+    foreach ($icon in $config.icons) {
+        Copy-CustomizationFile -SourcePath $icon.source -DestinationPath $icon.destination
+    }
+    foreach ($shortcut in $config.shortcuts) {
+        $shortcutContent = Build-InternetShortcut -Url $shortcut.url -IconFile $shortcut.icon
+        $shortcutPath = Join-Path -Path $publicDesktopPath -ChildPath $shortcut.name
+        Set-Content -Path $shortcutPath -Value $shortcutContent
+    }
+}
+
+function Add-LocalGroupMembers {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigFilePath
+    )
+    $config = Get-Content -Path $configFilePath | ConvertFrom-Json
+    foreach ($group in $config.LocalGroups) {
+        $groupName = $group.GroupName
+        $members = $group.Members
+        foreach ($member in $members) {
+            try {
+                Add-LocalGroupMember -Group $groupName -Member $member
+                Write-Host "Successfully added $member to $groupName"
+            } catch {
+                Write-Host "Failed to add $member to $groupName $_"
+            }
+        }
+    }
 }
 
 $customizationsFolder = "D:\Customizations"
@@ -123,11 +140,12 @@ Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\lockscreen.jp
 Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\oem.theme" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft\Windows\Themes"
 Set-PolicySettings -SettingsFile "$customizationsFolder\RegistrySettings.json"
 Set-SecurityBaselines -CustomizationsFolder $customizationsFolder
+Add-LocalGroupMembers -ConfigFilePath "$customizationsFolder\LocalGroupMembers.json"
+Set-PublicDesktopContents -ConfigFilePath "$customizationsFolder\PublicDesktop.json"
 @(
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate",
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate"
 ) | Where-Object { Test-Path $_ } | ForEach-Object { Remove-Item -Path $_ -Force }
-Add-LocalGroupMember -Group "Administrators" -Member "S-1-12-1-3698080277-1147366962-2456473244-1386568132"
 DISM /Online /Import-DefaultAppAssociations:"""$customizationsFolder\DefaultAppAssociations.xml"""
 $provisioningPackages = Get-ChildItem -Path $customizationsFolder -Filter "*.ppkg"
 if ($provisioningPackages) {
@@ -135,4 +153,3 @@ if ($provisioningPackages) {
         DISM /Online /Add-ProvisioningPackage /PackagePath:"""$($provisioningPackage.FullName)"""
     }
 }
-Set-PublicDesktopContents

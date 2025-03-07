@@ -1,0 +1,50 @@
+{
+    "desktopApps": [
+        {
+            "source": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Google Chrome.lnk",
+            "destination": "CommonDesktopDirectory"
+        },
+        {
+            "source": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Firefox.lnk",
+            "destination": "CommonDesktopDirectory"
+        },
+        {
+            "source": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Zoom\\Zoom Workplace.lnk",
+            "destination": "CommonDesktopDirectory"
+        },
+        {
+            "source": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Cisco\\Cisco AnyConnect Secure Mobility Client\\Cisco AnyConnect Secure Mobility Client.lnk",
+            "destination": "CommonDesktopDirectory"
+        },
+        {
+            "source": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Foxit PDF Editor\\Foxit PDF Editor.lnk",
+            "destination": "CommonDesktopDirectory"
+        },
+        {
+            "source": "$env:windir\\agdb\\Data Transfer.lnk",
+            "destination": "CommonDesktopDirectory"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Request IT Support.url",
+            "url": "https://uga.teamdynamix.com/TDClient/3159/KB/Requests/ServiceCatalog",
+            "icon": "$env:windir\\System32\\ITsupport.ico"
+        },
+        {
+            "name": "EITS Knowledgebase.url",
+            "url": "https://uga.teamdynamix.com/TDClient/3190/eitsclientportal/KB/",
+            "icon": "$env:windir\\System32\\UGA.ico"
+        }
+    ],
+    "icons": [
+        {
+            "source": "$customizationsFolder\\Branding\\ITSupport.ico",
+            "destination": "$env:windir\\System32"
+        },
+        {
+            "source": "$customizationsFolder\\Branding\\UGA.ico",
+            "destination": "$env:windir\\System32"
+        }
+    ]
+}

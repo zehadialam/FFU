@@ -1,0 +1,10 @@
+{
+    "LocalGroups": [
+        {
+            "GroupName": "Administrators",
+            "Members": [
+                "S-1-12-1-3698080277-1147366962-2456473244-1386568132"
+            ]
+        }
+    ]
+}
