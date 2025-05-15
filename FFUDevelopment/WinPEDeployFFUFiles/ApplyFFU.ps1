@@ -342,7 +342,7 @@ function Update-DellBIOS {
         }
         Write-Host "`nThe current BIOS version $computerBiosVersion is not the latest ($catalogBiosVersion)" -ForegroundColor Yellow
         $biosUrl = (Get-MyDellBios).Url
-        $flash64WUrl = "https://dl.dell.com/FOLDER10855396M/1/Flash64W_Ver3.3.22.zip"
+        $flash64WUrl = "https://dl.dell.com/FOLDER12288556M/1/FlashVer3.3.28.zip"
         $biosHash = ((Get-MyDellBios).HashMD5).toUpper()
         $biosFile = Split-Path -Path $biosUrl -Leaf
         $flash64WFile = Split-Path -Path $flash64WUrl -Leaf
