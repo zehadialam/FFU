@@ -254,8 +254,7 @@ function Save-DriverPack {
     )
     $manufacturerMap = @{
         "Dell Inc." = @{
-            UpdateCatalogCommand = { Update-DellDriverPackCatalog -UpdateModuleCatalog | Out-Null }
-            GetDriverPackCommand = { Get-DellDriverPack -Compatible }
+            GetDriverPackCommand = { Get-DellDriverPackCatalog -Compatible }
             GetDriverPackUrl     = { param($result) $result | Sort-Object -Property DriverPackOS -Descending | Select-Object -ExpandProperty DriverPackUrl -First 1 }
             GetDriverPackHash    = { param($result) $result | Sort-Object -Property DriverPackOS -Descending | Select-Object -ExpandProperty HashMD5 -First 1 }
             ExtractCommand       = { param($installer, $destination) Start-Process -FilePath $installer -ArgumentList "/e=$($destination)", "/s" -Wait -NoNewWindow }
@@ -271,8 +270,6 @@ function Save-DriverPack {
         Write-Host "Importing OSD module..." -ForegroundColor Yellow
         Import-Module OSD -ErrorAction SilentlyContinue | Out-Null
         Write-Host "OSD module is imported" -ForegroundColor Green
-        Write-Host "`nRetrieving latest $Manufacturer driver pack catalog...`n" -ForegroundColor Yellow
-        $manufacturerMap[$Manufacturer].UpdateCatalogCommand.Invoke()
         $driverPackResult = $manufacturerMap[$Manufacturer].GetDriverPackCommand.Invoke()
         if (-not $driverPackResult) {
             Write-Warning "Failed to retrieve $Model driver pack."

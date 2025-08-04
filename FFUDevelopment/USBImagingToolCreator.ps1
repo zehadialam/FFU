@@ -55,7 +55,7 @@ if ($DeployISOPath) {
         writelog "Checking if drivers are present in the drivers folder"
         $Drivers = Get-ChildItem -Path $DriversPath -Recurse
         $Autopilot = Get-ChildItem -Path $AutopilotPath -Recurse
-        $Unattend = Get-ChildItem -Path $UnattendPath -Recurse
+        $Unattend = Test-Path -Path $UnattendPath -PathType Leaf
         $PPKG = Get-ChildItem -Path $PPKGPath -Recurse
         $DrivesCount = $Drives.Count
         Write-ProgressLog "Create Imaging Tool" "Creating partitions..."
@@ -152,7 +152,7 @@ if ($DeployISOPath) {
             }
             writelog "Copying unattend files to all drives labeled deploy concurrently"
             foreach ($Drive in $DeployDrives) {
-                $Destination = $Drive + ":\Unattend"
+                $Destination = $Drive + ":\Unattend\unattend.xml"
                 $jobScriptBlock = {
                     param (
                         [string]$SFolder,
@@ -172,7 +172,7 @@ if ($DeployISOPath) {
             }
             writelog "Copying PPKG files to all drives labeled deploy concurrently"
             foreach ($Drive in $DeployDrives) {
-                $Destination = $Drive + ":\PPKG"
+                $Destination = $Drive + ":\PPKG\IntuneEnroll.ppkg.bak"
                 $jobScriptBlock = {
                     param (
                         [string]$SFolder,
@@ -219,8 +219,8 @@ if ($DeployISOPath) {
             [String]$FFUPath = "$DevelopmentPath\FFU",
             [String]$DriversPath = "$DevelopmentPath\Drivers",
             [String]$AutopilotPath = "$DevelopmentPath\Autopilot",
-            [String]$UnattendPath = "$DevelopmentPath\Unattend",
-            [String]$PPKGPath = "$DevelopmentPath\PPKG"  
+            [String]$UnattendPath = "$DevelopmentPath\Unattend\unattend_x64.xml",
+            [String]$PPKGPath = "$DevelopmentPath\PPKG\IntuneEnroll.ppkg"  
         )
   
         $Drivelist = @()

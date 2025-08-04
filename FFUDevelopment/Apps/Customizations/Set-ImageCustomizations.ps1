@@ -1,5 +1,8 @@
 function Remove-UWPApps {
-    $inboxApps = ".\InboxApps.json"
+    param (
+        [string]$AppsListPath
+    )
+    $inboxApps = "$AppsListPath"
     if (-not (Test-Path -Path $InboxApps -PathType Leaf)) {
         return
     }
@@ -133,7 +136,7 @@ function Add-LocalGroupMembers {
 }
 
 $customizationsFolder = "D:\Customizations"
-Remove-UWPApps
+Remove-UWPApps -AppsListPath "$customizationsFolder\InboxApps.json"
 Copy-CustomizationFile -SourcePath "$customizationsFolder\Branding\lockscreen.jpg" -DestinationPath "$env:windir\Web\Screen"
 # https://learn.microsoft.com/en-us/windows/win32/controls/themesfileformat-overview
 # https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/set-dark-mode
@@ -147,9 +150,3 @@ Set-PublicDesktopContents -ConfigFilePath "$customizationsFolder\PublicDesktop.j
     "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate"
 ) | Where-Object { Test-Path $_ } | ForEach-Object { Remove-Item -Path $_ -Force }
 DISM /Online /Import-DefaultAppAssociations:"""$customizationsFolder\DefaultAppAssociations.xml"""
-$provisioningPackages = Get-ChildItem -Path $customizationsFolder -Filter "*.ppkg"
-if ($provisioningPackages) {
-    foreach ($provisioningPackage in $provisioningPackages) {
-        DISM /Online /Add-ProvisioningPackage /PackagePath:"""$($provisioningPackage.FullName)"""
-    }
-}
